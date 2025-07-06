@@ -50,326 +50,53 @@
 | Gitea | git.crossman.synology.me | 3000 | 3000 | Git 저장소 |
 | DSM | dsm.crossman.synology.me | 5001 | 5001 | NAS 관리 |
 
-## 프로젝트 구조
+## 🌐 리버스 프록시 자동 관리
 
-모듈화된 구조로 각 기능별로 명확히 분리되어 있어 유지보수가 용이합니다.
+### 새로운 기능: 통합 서브도메인 관리
 
-![NAS-SubDomain-Manager 프로젝트 디렉토리 구조](https://pplx-res.cloudinary.com/image/upload/v1751441264/pplx_code_interpreter/758190ca_fhssjv.jpg)
+시놀로지 DSM의 리버스 프록시 기능을 API로 자동 관리하는 통합 시스템이 추가되었습니다.
 
-NAS-SubDomain-Manager 프로젝트 디렉토리 구조
+#### 🚀 주요 특징
 
-### 디렉토리 구성
+- **DSM API 통합**: 시놀로지 DSM API를 통한 리버스 프록시 자동 설정
+- **네트워크 인식**: 내부/외부 네트워크 환경 자동 감지 및 OpenVPN 보안 정책 적용
+- **대화형 관리**: 사용자 친화적인 메뉴 기반 관리 인터페이스
+- **크로스 플랫폼**: Linux/Windows(PowerShell) 동시 지원
+- **상태 모니터링**: 서브도메인 및 내부 서비스 상태 실시간 확인
 
-```
-/volume1/dev/NAS-SubDomain-Manager/
-├── main.sh                    # 메인 실행 스크립트
-├── .env                       # 환경 변수 설정
-├── docker-compose.yml         # Docker 서비스 정의
-├── config/                    # 설정 파일들
-├── scripts/                   # 기능별 스크립트
-│   ├── setup/                # 초기 설정 스크립트
-│   ├── services/             # 서비스 관리 스크립트
-│   ├── security/             # 보안 관련 스크립트
-│   └── maintenance/          # 유지보수 스크립트
-├── docker/                   # Docker 데이터 및 설정
-├── logs/                     # 로그 파일들
-├── backup/                   # 백업 디렉토리
-└── docs/                     # 문서
-```
-
-
-## 기능별 모듈 구성
-
-### 1. 기초 구조 모듈
-
-**색상 로그 시스템**: 직관적이고 깔끔한 로그 출력을 제공합니다.
+#### 🔧 사용법
 
 ```bash
-log_info()    # 녹색 - 정보 메시지
-log_warn()    # 노란색 - 경고 메시지
-log_error()   # 빨간색 - 에러 메시지
-log_step()    # 파란색 - 진행 단계
-log_success() # 보라색 - 성공 메시지
+# 통합 대화형 관리 (권장)
+./subdomain-manager.sh
+
+# 개별 명령 실행
+./subdomain-manager.sh check        # 네트워크 및 연결 확인
+./subdomain-manager.sh list         # 기존 규칙 조회
+./subdomain-manager.sh add n8n      # 특정 서비스 추가
+./subdomain-manager.sh setup-all    # 모든 서브도메인 설정
+./subdomain-manager.sh status       # 접속 상태 확인
+
+# Windows PowerShell
+.\reverse-proxy-manager.ps1 -Command setup-all
+.\reverse-proxy-manager.ps1 -Command add -Parameter n8n
 ```
 
-**환경 변수 관리**: 배열 구조로 포트 및 서브도메인을 체계적으로 관리합니다.
-
-**사전 검사 기능**:
-
-- DSM 7.0 이상 버전 확인
-- Docker 서비스 상태 검사
-- 포트 사용 현황 검증
-- Root 권한 방지
-
-
-### 2. 디렉토리 및 설정 파일 모듈
-
-**자동 디렉토리 생성**: 프로젝트, Docker, 백업 디렉토리를 체계적으로 구성합니다.
-
-**설정 파일 자동 생성**:
-
-- `.env` 파일: 메인 환경 변수
-- `n8n/.env`: n8n 전용 설정
-- `config.json`: MCP 서버 설정 (allowedIPs, CORS, API_KEY 포함)
-
-
-### 3. 방화벽 보안 모듈
-
-**포트 보안 관리**: 기본 포트 오픈 규칙을 제공하며 VPN 접근을 우선시합니다.
-
-**설정 가이드**: `firewall-rules.txt` 파일로 수동 설정 안내를 제공합니다.
-
-### 4. DNS \& DDNS 관리 모듈
-
-**DNS 설정 자동화**:
-
-- `dns-config.txt`: 서브도메인 설정 가이드
-- `update-dns.sh`: nslookup 기반 DNS 확인
-- Synology DDNS 서비스 자동 재시작
-
-
-### 5. Docker Compose 서비스 모듈
-
-**컨테이너 구성**:
-
-- nginx-proxy: 리버스 프록시
-- n8n: 워크플로우 자동화
-- mcp-server: Node.js 기반 임베디드 웹서버
-- uptime-kuma: 모니터링
-- watchtower: 자동 업데이트
-
-**자동 설정**:
-
-- 서브도메인별 VIRTUAL_HOST 설정
-- Let's Encrypt SSL 인증서 준비
-- Docker 네트워크 (172.20.0.0/16) 구성
-
-
-### 6. 백업 \& 헬스체크 모듈
-
-**자동 백업 시스템**:
-
-- n8n 데이터 및 설정 백업
-- Docker 볼륨 백업
-- 설정 파일 백업
-- 30일 보관 정책
-
-**헬스체크 모니터링**:
-
-- Docker 컨테이너 상태 확인
-- HTTP 연결 상태 점검
-- Uptime Kuma 알림 통합
-- 5분마다 자동 점검
-
-
-## 설치 및 사용법
-
-### 기본 설치 명령어
-
-```bash
-# 전체 시스템 설치
-./main.sh install
-
-# 개별 설정
-./main.sh setup      # 초기 설정만
-./main.sh start      # 서비스 시작
-./main.sh status     # 상태 확인
-./main.sh backup     # 백업 실행
-```
-
-
-### VSCode 개발 환경 설정
-
-1. **프로젝트 클론**: SSH를 통해 NAS에 접속하여 프로젝트를 설정합니다.
-2. **Dev Container**: VSCode의 Remote Development 확장을 사용하여 NAS 환경에서 직접 개발 가능합니다[^25][^26].
-3. **Code Server**: `code.crossman.synology.me`를 통해 웹 기반 VSCode 환경을 제공합니다.
-
-## 보안 고려사항
-
-### 네트워크 보안
-
-- **VPN 우선 접근**: 외부 접근은 OpenVPN(포트 1194)을 통해서만 권장
-- **방화벽 규칙**: 내부 네트워크(192.168.0.0/24) 및 Docker 네트워크(172.20.0.0/16)만 허용
-- **포트 제한**: 필요한 포트만 개방하여 공격 표면 최소화
-
-
-### SSL 인증서
-
-- **와일드카드 인증서**: `*.crossman.synology.me` 지원
-- **자동 갱신**: Let's Encrypt를 통한 90일 자동 갱신
-- **HTTPS 강제**: 모든 서비스에 HTTPS 적용
-
-
-## 모니터링 및 유지보수
-
-### 자동화된 백업
-
-- **일일 백업**: 매일 02:00에 자동 실행
-- **보관 정책**: 30일간 보관 후 자동 삭제
-- **알림 시스템**: Uptime Kuma를 통한 백업 성공/실패 알림
-
-
-### 헬스체크 시스템
-
-- **서비스 상태**: Docker 컨테이너 상태 실시간 모니터링
-- **네트워크 연결**: HTTP 엔드포인트 상태 확인
-- **자동 복구**: 서비스 재시작 및 복구 로직
-
-
-## 확장 가능성
-
-### 추가 서비스 통합
-
-시스템은 모듈화되어 있어 새로운 서비스를 쉽게 추가할 수 있습니다:
-
-- Home Assistant (포트 8123)
-- Mi Connector (포트 30000)
-- MySQL 데이터베이스 (포트 3306)
-
-
-### API 통합
-
-MCP 서버를 통해 다양한 외부 서비스와 연동 가능하며, n8n 워크플로우를 통한 자동화 확장이 용이합니다[^9][^12][^15].
-
-이 시스템은 시놀로지 NAS의 강력한 기능을 활용하여 안전하고 확장 가능한 서브도메인 관리 환경을 제공합니다. VSCode 환경에서의 개발부터 운영까지 모든 단계를 자동화하여 DevOps 워크플로우를 완성할 수 있습니다.
-
-<div style="text-align: center">⁂</div>
-
-[^1]: https://www.youtube.com/watch?v=7-L3wuMaLqk
-
-[^2]: https://docs.n8n.io/hosting/installation/docker/
-
-[^3]: https://chochol.io/en/hardware/synology-free-ports-80-443-for-nginx-proxy-manager/
-
-[^4]: https://deployn.de/en/guides/synology-nas/
-
-[^5]: https://docs.n8n.io/hosting/installation/server-setups/docker-compose/
-
-[^6]: https://www.blackvoid.club/nginx-proxy-manager/
-
-[^7]: https://mariushosting.com/synology-huge-docker-container-updates-june-2025/
-
-[^8]: https://docs.n8n.io/hosting/configuration/configuration-methods/
-
-[^9]: https://docs.anthropic.com/en/docs/claude-code/mcp
-
-[^10]: https://jarrodstech.net/how-to-set-up-multiple-domains-or-sub-domains-on-synology-nas/
-
-[^11]: https://www.youtube.com/watch?v=H2nDut-1wGM
-
-[^12]: https://devblogs.microsoft.com/dotnet/build-a-model-context-protocol-mcp-server-in-csharp/
-
-[^13]: https://stackoverflow.com/questions/45260719/synology-port-forwardding-according-to-subdomain
-
-[^14]: https://www.reddit.com/r/synology/comments/yowkw6/wildcard_ddns_for_custom_domains/
-
-[^15]: https://towardsdatascience.com/model-context-protocol-mcp-tutorial-build-your-first-mcp-server-in-6-steps/
-
-[^16]: https://superuser.com/questions/1519112/how-to-create-and-connect-subdomain-to-synology
-
-[^17]: https://dev-pages.info/backup-docker-volumes-to-the-nas/
-
-[^18]: https://www.youtube.com/watch?v=eCTjLTJcogQ
-
-[^19]: https://www.tskamath.com/🛠️-synology-nas-how-to-get-a-wildcard-lets-encrypt-certificate-for-any-domain/
-
-[^20]: https://www.reddit.com/r/synology/comments/1gnonnb/is_it_possible_to_automate_the_backup_of_docker/
-
-[^21]: https://mariushosting.com/synology-how-to-correctly-set-up-firewall-on-dsm-7/
-
-[^22]: https://mariushosting.com/synology-how-to-add-wildcard-certificate/
-
-[^23]: https://www.youtube.com/watch?v=9RUk9uEpvOg
-
-[^24]: https://kb.synology.com/DSM/tutorial/What_network_ports_are_used_by_Synology_services
-
-[^25]: https://www.docker.com/blog/master-docker-vs-code-supercharge-your-dev-workflow/
-
-[^26]: https://code.visualstudio.com/docs/devcontainers/containers
-
-[^27]: https://www.cloudpanel.io/tutorial/cloudpanel-subdomains/
-
-[^28]: https://www.reddit.com/r/dotnet/comments/1bhkbuw/how_to_organize_domains_in_a_clean_architecture/
-
-[^29]: https://nz.hostadvice.com/subdomain/
-
-[^30]: https://domaindrivendesign.org/project-structure/
-
-[^31]: https://1grid.co.za/blog/subdomains-vs-subdirectories-best-practices-for-2025/
-
-[^32]: https://stackoverflow.com/questions/75805314/what-is-the-better-approach-for-creating-folder-structure-on-a-ddd-project
-
-[^33]: https://mariushosting.com/how-to-install-nginx-proxy-manager-on-your-synology-nas/
-
-[^34]: https://mariushosting.com/synology-huge-docker-container-updates-may-2025/
-
-[^35]: https://docs.cursor.com/context/model-context-protocol
-
-[^36]: https://github.com/JessThrysoee/synology-letsencrypt
-
-[^37]: https://www.youtube.com/watch?v=dLCEqp2Vn9I
-
-[^38]: https://code.visualstudio.com/docs/devcontainers/create-dev-container
-
-[^39]: https://gbhackers.com/dns-management-tools/
-
-[^40]: https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/8a641717e615de089a3cd2f37672c3d5/964be9dd-a41f-4d4d-af3e-6d93bac9c7b2/f121df8f.sh
-
-[^41]: https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/8a641717e615de089a3cd2f37672c3d5/adaf0077-1382-4395-8075-fc11d332f75c/77393d4e.json
-
-[^42]: https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/8a641717e615de089a3cd2f37672c3d5/adaf0077-1382-4395-8075-fc11d332f75c/210461fc.json
-
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
-
-# 시놀로지 NAS 서브도메인 관리 시스템
-
-시놀로지 NAS의 crossman.synology.me 도메인을 기반으로 한 완전한 서브도메인 관리 시스템을 개발했습니다. **NAS-SubDomain-Manager**라는 프로젝트명으로 VSCode 환경에서 개발 가능하며, SSH를 통해 권한 충돌 없이 설치할 수 있는 모듈화된 스크립트 시스템입니다.
-
-## 🔒 안전 기능 (Security Features)
-
-### 요청/승인 시스템
-- **모든 중요한 작업에 대해 사용자 승인 요구**
-- **파괴적 작업은 특별한 확인 문구 요구**
-- **모든 승인 요청과 결과가 로그에 기록**
-- **테스트 모드에서는 자동 승인 지원**
-
-### 백업/복원 시스템
-- **자동 백업 생성 (설정, 스크립트, Docker 볼륨)**
-- **업데이트 전 안전 백업 자동 생성**
-- **원클릭 복원 기능**
-- **백업 검증 및 메타데이터 관리**
-
-## 프로젝트 개요
-
-### 프로젝트명 제안
-
-**NAS-SubDomain-Manager** - 시놀로지 NAS용 서브도메인 관리 시스템으로, 다음과 같은 특징을 가집니다:
-
-- **모듈화된 구조**: 기능별로 분리된 스크립트
-- **자동화 지원**: Docker 기반 서비스 관리
-- **보안 강화**: 방화벽 및 SSL 인증서 자동 설정
-- **요청/승인 워크플로우**: 안전한 운영을 위한 승인 시스템
-- **백업/복원 자동화**: 실패 시 빠른 복구 지원
-- **모니터링 통합**: 헬스체크 및 백업 자동화
-- **VSCode 호환**: 개발 환경 완벽 지원
-
-![시놀로지 NAS 서브도메인 아키텍처 및 포트 매핑](https://pplx-res.cloudinary.com/image/upload/v1751441072/pplx_code_interpreter/d63a1b90_sxi5fo.jpg)
-
-시놀로지 NAS 서브도메인 아키텍처 및 포트 매핑
-
-### 주요 서비스 및 포트 매핑
-
-제공해주신 포트포워드 정보를 기반으로 다음 서비스들의 서브도메인을 관리합니다:
-
-
-| 서비스 | 서브도메인 | 외부 포트 | 내부 포트 | 용도 |
-| :-- | :-- | :-- | :-- | :-- |
-| n8n | n8n.crossman.synology.me | 31001 | 5678 | 워크플로우 자동화 |
-| MCP | mcp.crossman.synology.me | 31002 | 31002 | 모델 컨텍스트 프로토콜 |
-| Uptime Kuma | uptime.crossman.synology.me | 31003 | 31003 | 모니터링 |
-| Code Server | code.crossman.synology.me | 8484 | 8484 | VSCode 웹 환경 |
-| Gitea | git.crossman.synology.me | 3000 | 3000 | Git 저장소 |
-| DSM | dsm.crossman.synology.me | 5001 | 5001 | NAS 관리 |
+#### 📋 지원 스크립트
+
+| 스크립트 | 플랫폼 | 기능 |
+|----------|--------|------|
+| `subdomain-manager.sh` | Linux/WSL | 통합 관리 시스템 (대화형 + 직접 명령) |
+| `reverse-proxy-manager.sh` | Linux/WSL | DSM API 기반 리버스 프록시 관리 |
+| `reverse-proxy-manager.ps1` | Windows | PowerShell 버전 리버스 프록시 관리 |
+| `network-check.sh` | Linux/WSL | 네트워크 환경 및 OpenVPN 상태 확인 |
+
+#### 🔒 보안 및 네트워크 정책
+
+- **내부 네트워크**: 192.168.0.x 대역에서 직접 접속 허용
+- **외부 네트워크**: OpenVPN 연결 시에만 접속 허용
+- **SSL/HTTPS**: 모든 서브도메인 HTTPS(443) → HTTP(내부포트) 매핑
+- **DSM 인증**: 관리자 권한 계정을 통한 안전한 API 접근
 
 ## 프로젝트 구조
 
