@@ -9,14 +9,14 @@ log_error() { echo -e "\033[31m[ERROR]\033[0m $1"; }
 log_step() { echo -e "\033[34m[STEP]\033[0m $1"; }
 log_success() { echo -e "\033[35m[SUCCESS]\033[0m $1"; }
 
-# 서브도메인 서비스 설정 (README.md 기반)
+# 서브도메인 서비스 설정 (삭제된 Sub_Domain/README.md 포트 매핑 기반)
 declare -A SUBDOMAIN_CONFIG=(
-    ["n8n"]="n8n.crossman.synology.me:31001:5678"
-    ["mcp"]="mcp.crossman.synology.me:31002:31002"
-    ["uptime"]="uptime.crossman.synology.me:31003:31003"
-    ["code"]="code.crossman.synology.me:8484:8484"
-    ["gitea"]="git.crossman.synology.me:3000:3000"
-    ["dsm"]="dsm.crossman.synology.me:5001:5001"
+    ["n8n"]="n8n.crossman.synology.me:31001:5678"          # 워크플로우 자동화
+    ["mcp"]="mcp.crossman.synology.me:31002:31002"         # 모델 컨텍스트 프로토콜
+    ["uptime"]="uptime.crossman.synology.me:31003:31003"   # 모니터링 시스템
+    ["code"]="code.crossman.synology.me:8484:8484"         # VSCode 웹 환경
+    ["git"]="git.crossman.synology.me:3000:3000"           # Git 저장소 (Gitea)
+    ["dsm"]="dsm.crossman.synology.me:5001:5001"           # DSM 웹 인터페이스
 )
 
 # DSM 로그인 정보 (환경변수에서 읽기)
