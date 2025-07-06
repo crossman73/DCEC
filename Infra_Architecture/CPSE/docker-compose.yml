@@ -1,0 +1,209 @@
+version: '3.8'
+
+# 시놀로지 NAS 서브도메인 서비스 관리
+# crossman.synology.me 기반 서비스 컨테이너 구성
+
+services:
+  # n8n 워크플로우 자동화 서비스
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: cpse_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./data/n8n:/home/node/.n8n
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=crossman
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme123}
+      - N8N_HOST=n8n.crossman.synology.me
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.crossman.synology.me
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=n8n"
+      - "cpse.subdomain=n8n.crossman.synology.me"
+      - "cpse.port=31001:5678"
+
+  # Uptime Kuma 모니터링 서비스
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: cpse_uptime
+    restart: unless-stopped
+    ports:
+      - "31003:3001"
+    volumes:
+      - ./data/uptime-kuma:/app/data
+    environment:
+      - UPTIME_KUMA_HOST=uptime.crossman.synology.me
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=uptime-kuma"
+      - "cpse.subdomain=uptime.crossman.synology.me"
+      - "cpse.port=31003:3001"
+
+  # Code Server (VSCode Web)
+  code-server:
+    image: codercom/code-server:latest
+    container_name: cpse_code
+    restart: unless-stopped
+    ports:
+      - "8484:8080"
+    volumes:
+      - ./data/code-server:/home/coder
+      - ./:/home/coder/workspace
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD:-changeme123}
+      - SUDO_PASSWORD=${CODE_SERVER_PASSWORD:-changeme123}
+    command: 
+      - --bind-addr
+      - 0.0.0.0:8080
+      - --user-data-dir
+      - /home/coder/.local/share/code-server
+      - --auth
+      - password
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=code-server"
+      - "cpse.subdomain=code.crossman.synology.me"
+      - "cpse.port=8484:8080"
+
+  # Gitea Git 저장소 서비스
+  gitea:
+    image: gitea/gitea:latest
+    container_name: cpse_gitea
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - ./data/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__database__HOST=db:3306
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD:-changeme123}
+      - GITEA__server__DOMAIN=git.crossman.synology.me
+      - GITEA__server__SSH_DOMAIN=git.crossman.synology.me
+      - GITEA__server__ROOT_URL=https://git.crossman.synology.me/
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=gitea"
+      - "cpse.subdomain=git.crossman.synology.me"
+      - "cpse.port=3000:3000"
+
+  # MCP 서버 (Model Context Protocol)
+  mcp-server:
+    build:
+      context: ./docker/mcp
+      dockerfile: Dockerfile
+    container_name: cpse_mcp
+    restart: unless-stopped
+    ports:
+      - "31002:31002"
+    volumes:
+      - ./data/mcp:/app/data
+      - ./scripts:/app/scripts:ro
+    environment:
+      - MCP_HOST=mcp.crossman.synology.me
+      - MCP_PORT=31002
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-changeme123}
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=mcp-server"
+      - "cpse.subdomain=mcp.crossman.synology.me"
+      - "cpse.port=31002:31002"
+
+  # CPSE 관리 웹 인터페이스
+  cpse-dashboard:
+    build:
+      context: ./docker/dashboard
+      dockerfile: Dockerfile
+    container_name: cpse_dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/app/workspace:ro
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    environment:
+      - DASHBOARD_TITLE=CPSE 서브도메인 관리
+      - BASE_DOMAIN=crossman.synology.me
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=cpse-dashboard"
+      - "cpse.subdomain=cpse.crossman.synology.me"
+      - "cpse.port=8080:80"
+
+  # Redis 캐시 서비스 (공통 사용)
+  redis:
+    image: redis:alpine
+    container_name: cpse_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme123}
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=redis"
+
+  # PostgreSQL 데이터베이스 (공통 사용)
+  postgres:
+    image: postgres:13
+    container_name: cpse_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=cpse
+      - POSTGRES_USER=cpse
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
+    networks:
+      - cpse_network
+    labels:
+      - "com.docker.compose.service=postgres"
+
+# 네트워크 설정
+networks:
+  cpse_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 볼륨 설정
+volumes:
+  n8n_data:
+    driver: local
+  uptime_data:
+    driver: local
+  code_data:
+    driver: local
+  gitea_data:
+    driver: local
+  mcp_data:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
