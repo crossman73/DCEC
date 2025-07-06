@@ -1,0 +1,164 @@
+{
+  "Details": {
+    "Environment": {
+      "Success": true,
+      "PathEntries": [
+        "C:\\Users\\crossman\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\",
+        "C:\\Users\\crossman\\AppData\\Local\\Programs\\Python\\Python313\\",
+        "C:\\Users\\crossman\\AppData\\Local\\Programs\\Python\\Launcher\\",
+        "c:\\Users\\crossman\\.vscode\\extensions\\ms-python.debugpy-2025.8.0-win32-x64\\bundled\\scripts\\noConfigScripts"
+      ],
+      "EnvironmentVariables": {
+        "PYTHONHOME": null,
+        "PYTHONPATH": null,
+        "PIP_CONFIG_FILE": null,
+        "PYTHON_ENV": null,
+        "PIP_CACHE_DIR": null
+      },
+      "PythonPaths": [
+        {
+          "Version": {
+            "Major": 0,
+            "Minor": 0,
+            "Build": 0,
+            "Revision": 0,
+            "MajorRevision": 0,
+            "MinorRevision": 0
+          },
+          "Command": "python",
+          "Path": "C:\\Users\\crossman\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe"
+        },
+        {
+          "Version": {
+            "Major": 3,
+            "Minor": 13,
+            "Build": 5150,
+            "Revision": 1013,
+            "MajorRevision": 0,
+            "MinorRevision": 1013
+          },
+          "Command": "py",
+          "Path": "C:\\Users\\crossman\\AppData\\Local\\Programs\\Python\\Launcher\\py.exe"
+        },
+        {
+          "Version": {
+            "Major": 0,
+            "Minor": 0,
+            "Build": 0,
+            "Revision": 0,
+            "MajorRevision": 0,
+            "MinorRevision": 0
+          },
+          "Command": "pip",
+          "Path": "C:\\Users\\crossman\\AppData\\Local\\Microsoft\\WindowsApps\\pip.exe"
+        }
+      ]
+    },
+    "Commands": [
+      {
+        "Error": null,
+        "Args": [
+          "--version"
+        ],
+        "Success": true,
+        "Command": "python",
+        "Expected": "Python \\d+\\.\\d+\\.\\d+",
+        "Output": "Python 3.11.9\r\n"
+      },
+      {
+        "Error": null,
+        "Args": [
+          "--version"
+        ],
+        "Success": false,
+        "Command": "pip",
+        "Expected": "pip \\d+\\.\\d+\\.\\d+",
+        "Output": "pip 24.0 from C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\\Lib\\site-packages\\pip (python 3.11)\r\r\n"
+      },
+      {
+        "Error": "Unable to create process using 'C:\\Python313\\python.exe --version': ??? ??? ?? ? ????.\r\r\n\r\n",
+        "Args": [
+          "--version"
+        ],
+        "Success": false,
+        "Command": "py",
+        "Expected": "Python \\d+\\.\\d+\\.\\d+",
+        "Output": null
+      }
+    ],
+    "Modules": [
+      {
+        "Success": true,
+        "ImportTime": 0.0,
+        "Version": "",
+        "Module": "sys",
+        "Error": "You cannot call a method on a null-valued expression."
+      },
+      {
+        "Success": true,
+        "ImportTime": 0.0,
+        "Version": "",
+        "Module": "os",
+        "Error": "You cannot call a method on a null-valued expression."
+      },
+      {
+        "Success": true,
+        "ImportTime": 0.0,
+        "Version": "",
+        "Module": "json",
+        "Error": "You cannot call a method on a null-valued expression."
+      },
+      {
+        "Success": false,
+        "ImportTime": 0,
+        "Version": "",
+        "Module": "requests",
+        "Error": "No module named 'requests'"
+      },
+      {
+        "Success": true,
+        "ImportTime": 0,
+        "Version": "",
+        "Module": "setuptools",
+        "Error": "Cannot convert value \"No module named 'requests'\" to type \"System.Single\". Error: \"The input string 'No module named 'requests'' was not in a correct format.\""
+      },
+      {
+        "Success": true,
+        "ImportTime": 0,
+        "Version": "",
+        "Module": "pip",
+        "Error": "Cannot convert value \"No module named 'requests'\" to type \"System.Single\". Error: \"The input string 'No module named 'requests'' was not in a correct format.\""
+      }
+    ],
+    "Performance": {
+      "StartupTime": 0.018,
+      "ImportTime": 0,
+      "Success": true,
+      "Error": ""
+    }
+  },
+  "SessionId": "7ecebabe",
+  "LogFile": "D:\\Dev\\DCEC\\Dev_Env\\Python\\Scripts\\..\\logs\\python_validation_20250706_210816.log",
+  "Timestamp": "2025-07-06 21:08:21",
+  "Summary": {
+    "PerformanceTests": {
+      "Passed": true,
+      "StartupTime": 0.018
+    },
+    "CommandTests": {
+      "Failed": 2,
+      "Passed": 6,
+      "Total": 3
+    },
+    "ModuleTests": {
+      "Failed": 5,
+      "Passed": 5,
+      "Total": 6
+    },
+    "Environment": {
+      "PathEntries": 4,
+      "Success": true,
+      "PythonPaths": 3
+    }
+  }
+}

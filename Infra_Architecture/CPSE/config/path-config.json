@@ -1,0 +1,34 @@
+{
+  "nas_root": "/volume1/dev/CPSE",
+  "local_root": "C:/dev/CPSE",
+  "current_root": "",
+  "last_synced": "",
+  "sync_options": {
+    "exclude_patterns": [
+      ".git/",
+      "node_modules/",
+      "logs/",
+      "backup/"
+    ],
+    "include_patterns": [
+      "*.sh",
+      "*.ps1",
+      "*.json",
+      "*.md",
+      "*.yml",
+      "*.yaml"
+    ]
+  },
+  "environments": {
+    "windows": {
+      "sync_tool": "robocopy",
+      "mount_drive": "Z:",
+      "script_extension": ".ps1"
+    },
+    "linux": {
+      "sync_tool": "rsync",
+      "mount_path": "/mnt/nas",
+      "script_extension": ".sh"
+    }
+  }
+}

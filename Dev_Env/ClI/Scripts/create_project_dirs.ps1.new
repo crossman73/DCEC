@@ -1,0 +1,246 @@
+#requires -Version 7.0
+
+<#
+.SYNOPSIS
+    Creates project directory structures for services.
+
+.DESCRIPTION
+    Creates main project and sub-project directory structures for services,
+    including both Windows and WSL2 directories.
+
+.NOTES
+    Working directory: D:\Dev\DCEC
+#>
+
+[CmdletBinding()]
+param()
+
+Begin {
+    Set-StrictMode -Version Latest
+    $ErrorActionPreference = 'Stop'
+    $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+
+    # Basic paths
+    $script:RootDir = 'D:\Dev\DCEC'
+    $script:LogType = 'DIRSETUP'
+    $script:LogDir = Join-Path -Path $RootDir -ChildPath 'Dev_Env\ClI\logs'
+    $script:timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $script:LogFile = Join-Path -Path $LogDir -ChildPath ('{0}_{1}.log' -f $LogType, $timestamp)
+
+    # Service directories
+    $script:ServiceDirs = @(
+        'ClaudeCodeService',
+        'GeminiService', 
+        'UtilsService',
+        'BackupService'
+    ) | ForEach-Object { 
+        Join-Path -Path $RootDir -ChildPath $_
+    }
+
+    # Subdirectories
+    $script:SubDirs = @(
+        'config',
+        'bin', 
+        'logs', 
+        'src', 
+        'tests', 
+        'docs'
+    )
+
+    function Initialize-LogDirectory {
+        [CmdletBinding()]
+        param()
+
+        if (-not (Test-Path -Path $LogDir)) { 
+            $null = New-Item -Path $LogDir -ItemType Directory -Force
+        }
+    }
+
+    function Write-ProjectLog {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Type,
+            
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Message,
+            
+            [Parameter()]
+            [string]$Result = ''
+        )
+        
+        $currentTime = Get-Date -Format 'yyyy-MM-dd HH\:mm\:ss'
+        $logLine = '{0} [{1}] {2}' -f $currentTime, $Type, $Message
+        if ($Result) { 
+            $logLine += ' [{0}]' -f $Result
+        }
+        Add-Content -Path $LogFile -Value $logLine
+        Write-Verbose -Message $logLine
+    }
+
+    function Convert-ToWslPath {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Path
+        )
+        
+        $Path.Replace('\', '/').Replace('D:', '/mnt/d')
+    }
+
+    function Test-WslCommand {
+        [CmdletBinding()]
+        param()
+
+        try {
+            $null = & wsl bash -c 'exit'
+            $true
+        }
+        catch {
+            Write-Warning -Message 'WSL installation is required'
+            $false
+        }
+    }
+
+    function New-ServiceDirectory {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Path
+        )
+        
+        try {
+            $wslPath = Convert-ToWslPath -Path $Path
+            
+            # Create Windows directory
+            if (-not (Test-Path -Path $Path)) {
+                $null = New-Item -Path $Path -ItemType Directory -Force
+            }
+            
+            # Create WSL directory
+            $null = wsl bash -c ('mkdir -p "{0}"' -f $wslPath)
+            
+            # Verify existence
+            if ((Test-Path -Path $Path) -and (wsl test -d ('{0}' -f $wslPath))) {
+                Write-ProjectLog -Type $LogType -Message 'Directory creation completed' -Result $Path
+                $true
+            } 
+            else {
+                Write-ProjectLog -Type $LogType -Message 'Directory creation failed' -Result $Path
+                $false
+            }
+        }
+        catch {
+            Write-ProjectLog -Type $LogType -Message 'Directory creation error' -Result ('{0} - {1}' -f $Path, $_)
+            throw
+        }
+    }
+
+    function New-ConfigFile {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Path,
+            
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$Template
+        )
+        
+        try {
+            if (-not (Test-Path -Path $Path)) {
+                Set-Content -Path $Path -Value $Template
+                $wslPath = Convert-ToWslPath -Path $Path
+                $null = wsl bash -c ('chmod 600 "{0}"' -f $wslPath)
+                Write-ProjectLog -Type $LogType -Message 'Configuration file created' -Result $Path
+                $true
+            }
+            else {
+                $false
+            }
+        }
+        catch {
+            Write-ProjectLog -Type $LogType -Message 'Configuration file creation failed' -Result ('{0} - {1}' -f $Path, $_)
+            throw
+        }
+    }
+}
+
+Process {
+    try {
+        Initialize-LogDirectory
+        Write-ProjectLog -Type $LogType -Message 'Starting project directory structure creation'
+        
+        # Check WSL installation
+        if (-not (Test-WslCommand)) {
+            throw 'WSL is required for this operation'
+        }
+        
+        # Create service directories
+        foreach ($dir in $ServiceDirs) {
+            $null = New-ServiceDirectory -Path $dir
+            
+            # Create subdirectories
+            foreach ($subDir in $SubDirs) {
+                $fullPath = Join-Path -Path $dir -ChildPath $subDir
+                $null = New-ServiceDirectory -Path $fullPath
+            }
+        }
+        
+        # Create integration directory
+        $IntegrationDir = Join-Path -Path $RootDir -ChildPath 'Integration'
+        $null = New-ServiceDirectory -Path $IntegrationDir
+        
+        # Create configuration files
+        $ConfigTemplate = @'
+# Service authentication/security environment variables
+API_KEY=__REPLACE_ME__
+SECRET=__REPLACE_ME__
+ENDPOINT=__REPLACE_ME__
+'@
+        
+        foreach ($svcDir in $ServiceDirs) {
+            $configPath = Join-Path -Path $svcDir -ChildPath 'config\secure.env'
+            $null = New-ConfigFile -Path $configPath -Template $ConfigTemplate
+        }
+        
+        # Create .gitignore files
+        $GitIgnoreTemplate = @'
+# Security settings
+secure.env
+
+# Log files
+logs/
+*.log
+
+# Build output
+bin/
+obj/
+
+# Temporary files
+temp/
+*.tmp
+'@
+        
+        foreach ($svcDir in $ServiceDirs) {
+            $gitignorePath = Join-Path -Path $svcDir -ChildPath '.gitignore'
+            $null = New-ConfigFile -Path $gitignorePath -Template $GitIgnoreTemplate
+        }
+        
+        Write-ProjectLog -Type $LogType -Message 'Project directory structure creation completed' -Result 'SUCCESS'
+        Write-Output ('Project directory structure has been created. Log file: {0}' -f $LogFile)
+    }
+    catch {
+        Write-ProjectLog -Type $LogType -Message 'Fatal error occurred' -Result ('{0}' -f $_)
+        throw
+    }
+}
+
+End {
+    Write-Verbose 'Script execution completed'
+}

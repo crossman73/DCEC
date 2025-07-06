@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: n8n_password
+      POSTGRES_DB: n8n
+    volumes:
+      - /volume1/dev/n8n/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "31001:5678"  # NAS 외부 포트 31001에 n8n 서비스 매핑
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: n8n_password
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: yourpassword
+      WEBHOOK_URL: https://crossman.synology.me:31001
+      N8N_BASE_URL: https://crossman.synology.me:31001
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: Asia/Seoul
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
+      N8N_METRICS: "true"
+      N8N_METRICS_PREFIX: n8n_
+    volumes:
+      - /volume1/dev/n8n/data:/home/node/.n8n
+      - /volume1/dev/n8n/files:/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - dev-network
+
+  mcp-server:
+    image: leonardsellem/n8n-mcp-server:latest
+    container_name: mcp-server
+    restart: unless-stopped
+    ports:
+      - "31002:31002"
+    environment:
+      N8N_API_URL: http://n8n:5678/api/v1
+      N8N_API_KEY: "${N8N_API_KEY}"
+      MCP_PORT: 31002
+      MCP_HOST: "0.0.0.0"
+      NODE_ENV: production
+      DEBUG: "mcp:*"
+    depends_on:
+      n8n:
+        condition: service_healthy
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:31002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  vscode-web:
+    image: codercom/code-server:latest
+    container_name: vscode-web
+    restart: unless-stopped
+    ports:
+      - "31003:8080"
+    environment:
+      PASSWORD: "${VSCODE_PASSWORD}"
+      SUDO_PASSWORD: "${VSCODE_PASSWORD}"
+    volumes:
+      - /volume1/dev:/home/coder/workspace
+      - /volume1/dev/vscode/config:/home/coder/.config
+      - /volume1/dev/vscode/local:/home/coder/.local
+    user: "1000:1000"
+    networks:
+      - dev-network
+    command: >
+      --bind-addr 0.0.0.0:8080
+      --auth password
+      --disable-telemetry
+      --disable-update-check
+      /home/coder/workspace
+
+networks:
+  dev-network:
+    driver: bridge
+    name: dev-network
+---
+## 10. 자동화 생태계 가이드 및 거버넌스
+
+### 10.1 목적 및 범위
+- **목적**: 무무님 NAS 기반 클라우드-프라이빗 개발 환경이 자동으로 생성·복구·모니터링되고, 문제가 발생 시 즉시 자가진단·자가치유(Self-healing)될 수 있도록 프로세스와 책임 체계를 정의
+- **범위**: n8n, MCP-Server, VSCode-Web, Postgres, Portainer, Watchtower, Reverse Proxy 등 모든 컨테이너 서비스
+
+### 10.2 거버넌스 프레임워크
+1. **책임자**
+   - **무무**: 전체 전략·우선순위·비상조치 결정
+   - **지피(GPT-DevOps)**: 자동화 스크립트 작성·업데이트, 모니터링 정책 유지·보강, 이슈 분석·해결 가이드 제공
+2. **의사결정 절차**
+   - 변경 요청(RFC) 제출 → 지피 검토 → 무무 승인 → 문서화 후 배포
+3. **문서화 규칙**
+   - 모든 스크립트 및 구성파일 버전 관리(Git) → 변경 시 changelog 기록
+   - 운영매뉴얼은 `/guide/auto-governance.md`에 집중 관리
+
+### 10.3 자동화 가이드라인
+1. **환경 감지**: 스크립트(`detect-env.sh`)가 설치 상태·버전·포트포워딩을 점검
+2. **설치 자동화**: 미설치 서비스는 `install-<service>.sh` 호출하여 배포
+3. **헬스체크 & Self-healing**
+   - Health endpoint 비정상 시 → `restart-<service>.sh` 실행
+   - 재시도 3회 이상 실패 시 무무에게 알림(텔레그램/이메일)
+4. **백업 & 복원**: `backup-all.sh` 주간 실행 후 GitHub 푸시 → 복원 시 `restore-all.sh`
+5. **업데이트**: Watchtower 자동 업데이트 주 1회 → 변경 로그 검토 후 승인
+
+### 10.4 모니터링 및 알림 정책
+- **모니터링 툴**: uptime-kuma로 각 서비스 health URL 체크(1분 주기)
+- **알림 채널**: 텔레그램 봇, 이메일, Slack 연동
+- **에스컬레이션**: 1차 알림 실패 시 무무팀 SMS 긴급발송
+
+### 10.5 교육 및 온보딩
+- 신규 팀원 온보딩: `/guide/onboarding.md`에 환경 구축·운영 절차 기재
+- 정기 워크숍: 분기별로 자동화·거버넌스 리뷰 세션 개최
+
+### 10.6 지속적 개선
+- 매월 시스템·거버넌스 점검 회의 개최
+- 피드백 수집 → RFC 제출 → 지피/무무 검토 → 반영
+
+**이로써 자동화 생태계의 가이드 및 거버넌스가 완성되었습니다.**
+

@@ -1,0 +1,50 @@
+{
+  "projectType": "ai_service",
+  "version": "1.0.0",
+  "description": "AI 서비스 통합 템플릿 (Claude, GPT, Gemini 지원)",
+  "environmentSetup": {
+    "requiredModules": ["logging", "directory_setup"],
+    "pythonDependencies": [
+      "anthropic",
+      "openai",
+      "google-generativeai",
+      "langchain",
+      "fastapi",
+      "pydantic",
+      "python-dotenv"
+    ],
+    "directories": [
+      "src",
+      "src/services",
+      "src/models",
+      "src/prompts",
+      "src/api",
+      "src/utils",
+      "tests",
+      "docs",
+      "config",
+      "prompts"
+    ],
+    "files": {
+      "src/main.py": "from fastapi import FastAPI\nfrom dotenv import load_dotenv\nfrom src.services import ClaudeService, GPTService, GeminiService\n\nload_dotenv()\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {'message': 'Welcome to ${projectName} AI Service'}",
+      "src/services/claude_service.py": "from anthropic import Anthropic\nfrom os import getenv\n\nclass ClaudeService:\n    def __init__(self):\n        self.client = Anthropic(api_key=getenv('ANTHROPIC_API_KEY'))\n\n    async def generate(self, prompt: str):\n        response = await self.client.messages.create(\n            model='claude-3-opus-20240229',\n            max_tokens=1000,\n            messages=[{'role': 'user', 'content': prompt}]\n        )\n        return response.content[0].text",
+      "src/services/gpt_service.py": "from openai import OpenAI\nfrom os import getenv\n\nclass GPTService:\n    def __init__(self):\n        self.client = OpenAI(api_key=getenv('OPENAI_API_KEY'))\n\n    async def generate(self, prompt: str):\n        response = await self.client.chat.completions.create(\n            model='gpt-4-turbo-preview',\n            messages=[{'role': 'user', 'content': prompt}]\n        )\n        return response.choices[0].message.content",
+      "src/services/gemini_service.py": "import google.generativeai as genai\nfrom os import getenv\n\nclass GeminiService:\n    def __init__(self):\n        genai.configure(api_key=getenv('GOOGLE_API_KEY'))\n        self.model = genai.GenerativeModel('gemini-pro')\n\n    async def generate(self, prompt: str):\n        response = await self.model.generate_content(prompt)\n        return response.text",
+      "config/.env.example": "ANTHROPIC_API_KEY=your-claude-api-key\nOPENAI_API_KEY=your-openai-api-key\nGOOGLE_API_KEY=your-google-api-key",
+      "prompts/system_prompts.yaml": "claude:\n  system: \"You are Claude, an AI assistant focused on helpful and accurate responses.\"\n\ngpt:\n  system: \"You are a helpful AI assistant focused on providing accurate and relevant information.\"\n\ngemini:\n  system: \"You are an AI assistant focused on clear and precise communication.\"",
+      "requirements.txt": "anthropic\nopenai\ngoogle-generativeai\nlangchain\nfastapi\nuvicorn\npydantic\npython-dotenv"
+    }
+  },
+  "prompts": {
+    "setup": [
+      "프로젝트 이름을 입력하세요:",
+      "사용할 AI 모델을 선택하세요 (claude/gpt/gemini/all):",
+      "API 문서 자동 생성을 활성화하시겠습니까? (y/n):"
+    ]
+  },
+  "scripts": {
+    "start": "uvicorn src.main:app --reload",
+    "test": "pytest",
+    "generate-docs": "python -m sphinx.cmd.quickstart docs"
+  }
+}

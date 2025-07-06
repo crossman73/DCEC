@@ -1,0 +1,52 @@
+{
+  "nas": {
+    "hostname": "crossman.synology.me",
+    "internal_ip": "192.168.0.5",
+    "ssh_port": 22022,
+    "ssh_user": "crossman",
+    "dsm_port": 5000,
+    "dsm_https_port": 5001,
+    "domain": "crossman.synology.me",
+    "ddns_provider": "synology",
+    "ssl_cert_type": "letsencrypt_wildcard"
+  },
+  "services": {
+    "n8n": {
+      "port": 5678,
+      "external_port": 31001,
+      "subdomain": "n8n.crossman.synology.me"
+    },
+    "mcp": {
+      "port": 31002,
+      "external_port": 31002,
+      "subdomain": "mcp.crossman.synology.me"
+    },
+    "uptime_kuma": {
+      "port": 31003,
+      "external_port": 31003,
+      "subdomain": "uptime.crossman.synology.me"
+    },
+    "code_server": {
+      "port": 8484,
+      "external_port": 8484,
+      "subdomain": "code.crossman.synology.me"
+    },
+    "gitea": {
+      "port": 3000,
+      "external_port": 3000,
+      "subdomain": "git.crossman.synology.me"
+    },
+    "dsm": {
+      "port": 5001,
+      "external_port": 5001,
+      "subdomain": "dsm.crossman.synology.me"
+    }
+  },
+  "network": {
+    "internal_subnet": "192.168.0.0/24",
+    "docker_subnet": "172.20.0.0/16",
+    "vpn_subnet": "10.8.0.0/24",
+    "vpn_port": 1194
+  },
+  "last_updated": ""
+}

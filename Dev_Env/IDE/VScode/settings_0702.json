@@ -1,0 +1,46 @@
+{
+"workbench.colorTheme": "Monokai Dimmed",
+"sonarlint.ls.javaHome": "c:\\Users\\crossman\\.vscode\\extensions\\sonarsource.sonarlint_managed-jre\\jre\\jdk-11.0.13+8-jre",
+"editor.cursorBlinking": "expand",
+"editor.cursorSmoothCaretAnimation": "on",
+"editor.fontFamily": "D2Coding,Consolas, 'Courier New', monospace",
+"grunt.autoDetect": "on",
+"cloudcode.updateChannel": "Insiders",
+"cloudcode.beta.enableSkaffoldModules": true,
+"cloudcode.enableConfigLessExperience": true,
+"cloudcode.enableMultiSkaffoldConfigsKey": true,
+"cloudcode.verboseLogging": true,
+"editor.suggestSelection": "first",
+"vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+"[python]": {
+"editor.formatOnType": true
+},
+"geminicodeassist.project": "gen-lang-client-0393731698",
+"geminicodeassist.updateChannel": "Insiders",
+"tabnine.experimentalAutoImports": true,
+"files.autoSave": "afterDelay",
+"github.copilot.nextEditSuggestions.enabled": true,
+"sonarlint.focusOnNewCode": true,
+"java.configuration.runtimes": [
+
+
+],
+"gitlens.ai.model": "vscode",
+"gitlens.ai.vscode.model": "copilot:claude-3.5-sonnet",
+"java.showBuildStatusOnStart.enabled": "notification",
+"projectManager.git.baseFolders": [
+"Java"
+],
+"terminal.integrated.enableMultiLinePasteWarning": "never",
+"security.workspace.trust.untrustedFiles": "open",
+"geminicodeassist.inlineSuggestions.enableAuto": true,
+"vs-kubernetes": {
+"vscode-kubernetes.minikube-path-windows": "C:\\Users\\cross\\.vs-kubernetes\\tools\\minikube\\windows-amd64\\minikube.exe",
+"vscode-kubernetes.helm-path-windows": "C:\\Users\\cross\\.vs-kubernetes\\tools\\helm\\windows-amd64\\helm.exe"
+},
+"gitlens.views.commitDetails.files.layout": "list",
+"github.copilot.advanced": {
+
+}
+
+}

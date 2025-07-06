@@ -1,0 +1,81 @@
+{
+    // PowerShell 설정
+    "powershell.codeFormatting.preset": "Custom",
+    "powershell.codeFormatting.alignPropertyValuePairs": true,
+    "powershell.codeFormatting.ignoreOneLineBlock": true,
+    "powershell.codeFormatting.newLineAfterCloseBrace": true,
+    "powershell.codeFormatting.newLineAfterOpenBrace": true,
+    "powershell.codeFormatting.openBraceOnSameLine": true,
+    "powershell.codeFormatting.whitespaceAfterSeparator": true,
+    "powershell.codeFormatting.whitespaceAroundOperator": true,
+    "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
+    "powershell.codeFormatting.whitespaceBeforeOpenParen": true,
+    "powershell.integratedConsole.showOnStartup": true,
+    "powershell.integratedConsole.focusConsoleOnExecute": false,
+    "powershell.debugging.createTemporaryIntegratedConsole": true,
+    
+    // 스크립트 분석 설정
+    "powershell.scriptAnalysis.enable": true,
+    "powershell.scriptAnalysis.settingsPath": "../config/PSScriptAnalyzerSettings_Simple.psd1",
+    
+    // 편집기 설정
+    "files.encoding": "utf8bom",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "editor.rulers": [80, 120],
+    "editor.renderWhitespace": "boundary",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    
+    // PowerShell 확장 추천
+    "extensions.ignoreRecommendations": false,
+    
+    // 문제 탐색기 설정
+    "problems.showCurrentInStatus": true,
+    
+    // Spell Checker 설정 (한글 및 기술 용어 제외)
+    "cSpell.enabled": true,
+    "cSpell.language": "en,ko",
+    "cSpell.enabledFileTypes": {
+        "powershell": true
+    },
+    "cSpell.words": [
+        "DCEC", "PowerShell", "psm1", "psd1", "pssc", "ps1xml",
+        "ClaudeCodeService", "UtilsService", "GeminiService", "BackupService",
+        "PSScriptAnalyzer", "UTF8BOM", "param", "params",
+        "cmdlet", "cmdlets", "hashtable", "datetime", "timespan",
+        "BasePath", "ServiceName", "ProblemId", "LogDir", "SessionId",
+        "WorkContext", "EnvironmentInfo", "DirectoryHistory",
+        "WriteLog", "WriteDCECLog", "InitializeDCEC", "TestDCEC",
+        "NewDCEC", "GetDCEC", "AddDCEC", "ExportDCEC", "BackupDCEC"
+    ],
+    "cSpell.ignoreWords": [
+        "한글", "설명", "초기화", "생성", "검증", "추적", "보고서", "매뉴얼",
+        "디렉토리", "서비스", "환경", "정보", "컨텍스트", "이력", "상태"
+    ],
+    "cSpell.ignorePaths": [
+        "logs/**",
+        "chat/**",
+        "*.log",
+        "**/*.log"
+    ],
+    
+    // 기타 확장 설정
+    "errorLens.enabled": false,
+    "errorLens.enabledDiagnosticLevels": ["error"],
+    "powershell.promptToUpdatePowerShell": false,
+    
+    // Git 설정
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    
+    // 터미널 설정
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell",
+            "args": ["-NoLogo"]
+        }
+    }
+}

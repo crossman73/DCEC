@@ -1,0 +1,55 @@
+{
+  "projectType": "api_server",
+  "version": "1.0.0",
+  "description": "FastAPI 기반 API 서버 템플릿",
+  "environmentSetup": {
+    "requiredModules": ["logging", "directory_setup"],
+    "pythonDependencies": [
+      "fastapi",
+      "uvicorn",
+      "pydantic",
+      "sqlalchemy",
+      "alembic",
+      "python-dotenv"
+    ],
+    "directories": [
+      "src",
+      "src/api",
+      "src/models",
+      "src/schemas",
+      "src/services",
+      "src/database",
+      "tests",
+      "tests/api",
+      "tests/services",
+      "docs",
+      "docs/api",
+      "config",
+      "migrations"
+    ],
+    "files": {
+      "src/main.py": "from fastapi import FastAPI\nfrom dotenv import load_dotenv\n\nload_dotenv()\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {'message': 'Welcome to ${projectName}'}",
+      "src/api/__init__.py": "",
+      "src/models/__init__.py": "",
+      "src/schemas/__init__.py": "",
+      "src/services/__init__.py": "",
+      "src/database/session.py": "from sqlalchemy import create_engine\nfrom sqlalchemy.orm import sessionmaker\nfrom os import getenv\n\nDATABASE_URL = getenv('DATABASE_URL', 'sqlite:///./app.db')\n\nengine = create_engine(DATABASE_URL)\nSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+      "config/.env.example": "DATABASE_URL=sqlite:///./app.db\nSECRET_KEY=your-secret-key-here\nDEBUG=True",
+      "tests/conftest.py": "import pytest\nfrom fastapi.testclient import TestClient\nfrom src.main import app\n\n@pytest.fixture\ndef client():\n    return TestClient(app)",
+      "requirements.txt": "fastapi\nuvicorn\npydantic\nsqlalchemy\nalembic\npython-dotenv\npytest\nhttpx"
+    }
+  },
+  "prompts": {
+    "setup": [
+      "프로젝트 이름을 입력하세요:",
+      "데이터베이스 유형을 선택하세요 (sqlite/postgresql):",
+      "API 문서 자동 생성을 활성화하시겠습니까? (y/n):"
+    ]
+  },
+  "scripts": {
+    "start": "uvicorn src.main:app --reload",
+    "test": "pytest",
+    "migrate": "alembic upgrade head",
+    "makemigrations": "alembic revision --autogenerate"
+  }
+}

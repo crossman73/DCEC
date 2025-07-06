@@ -1,0 +1,31 @@
+{
+  "projectName": "default_project",
+  "version": "1.0.0",
+  "description": "기본 프로젝트 템플릿",
+  "environmentSetup": {
+    "requiredModules": ["logging", "directory_setup"],
+    "directories": [
+      "src",
+      "docs",
+      "tests",
+      "logs",
+      "config"
+    ],
+    "files": {
+      "readme.md": "# ${projectName}\n\n${description}\n\n## 설치 방법\n\n## 사용 방법",
+      "config/settings.json": {
+        "environment": "development",
+        "logLevel": "INFO",
+        "enableChatLogging": true,
+        "enableProblemTracking": true
+      }
+    }
+  },
+  "prompts": {
+    "setup": [
+      "프로젝트 이름을 입력하세요:",
+      "프로젝트 설명을 입력하세요:",
+      "로깅 레벨을 선택하세요 (DEBUG/INFO/WARN/ERROR):"
+    ]
+  }
+}

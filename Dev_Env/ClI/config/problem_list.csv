@@ -1,0 +1,11 @@
+Id,Title,Description,Category,Priority,AssignedTo,Status
+1,개발 환경 자동화,개발 환경 초기 설정 및 구성 자동화,Environment,1,시스템관리자,InProgress
+2,PowerShell 모듈 구조화,PowerShell 모듈 구조 표준화 및 최적화,Environment,1,개발팀장
+3,문제 추적 시스템 구현,문제 추적 시스템 기본 기능 구현,Environment,1,개발팀장
+4,로깅 시스템 개선,로깅 시스템 기능 개선 및 확장,Environment,2,개발자1
+5,Claude CLI 통합,Claude CLI 환경 통합 및 테스트,CLI,1,개발자2
+6,Gemini CLI 통합,Gemini CLI 환경 통합 및 테스트,CLI,1,개발자2
+7,디렉토리 구조 최적화,프로젝트 디렉토리 구조 최적화,Environment,2,시스템관리자
+8,권한 관리 시스템,사용자 권한 관리 시스템 구현,Security,2,보안담당자
+9,설정 파일 암호화,중요 설정 파일 암호화 구현,Security,2,보안담당자
+10,성능 모니터링,시스템 성능 모니터링 도구 구현,Performance,3,개발자3

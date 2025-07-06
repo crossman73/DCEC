@@ -1,0 +1,33 @@
+{
+    "problemTracking": {
+        "enabled": true,
+        "categories": [
+            "환경설정",
+            "AI서비스",
+            "CLI도구",
+            "성능",
+            "보안",
+            "호환성"
+        ],
+        "severityLevels": [
+            "Critical",
+            "High",
+            "Medium",
+            "Low"
+        ],
+        "statusTypes": [
+            "Open",
+            "InProgress",
+            "UnderReview",
+            "Resolved",
+            "Closed"
+        ]
+    },
+    "logging": {
+        "logLevel": "DEBUG",
+        "logFormat": "{timestamp} [{level}] {category} - {message}",
+        "logDir": "logs",
+        "retentionDays": 30,
+        "enableConsoleOutput": true
+    }
+}

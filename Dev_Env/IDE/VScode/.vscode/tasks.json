@@ -1,0 +1,473 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PowerShell: Initialize Environment",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\Initialize-DCECEnvironment.ps1"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "DCEC 개발 환경 초기화"
+    },
+    {
+      "label": "PowerShell: Create Project Structure",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\create_project_dirs.ps1"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "새 프로젝트 디렉토리 구조 생성"
+    },
+    {
+      "label": "PowerShell: Manage Problems",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\Manage-Problems.ps1"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "문제 추적 시스템 관리"
+    },
+    {
+      "label": "VS Code: Install Extensions",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Dev_Env\\IDE\\VScode\\install-vscode-full-setup.ps1"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "VS Code 확장 프로그램 설치"
+    },
+    {
+      "label": "TypeScript: Build Project",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["run", "build"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": ["$tsc"],
+      "detail": "TypeScript 프로젝트 빌드",
+      "options": {
+        "cwd": "${workspaceFolder}\\Dev_Env\\IDE\\VScode"
+      }
+    },
+    {
+      "label": "TypeScript: Watch Mode",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["run", "watch"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": ["$tsc-watch"],
+      "detail": "TypeScript 감시 모드",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}\\Dev_Env\\IDE\\VScode"
+      }
+    },
+    {
+      "label": "PowerShell: Run Tests",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Invoke-Pester -Path '${workspaceFolder}\\Dev_Env\\ClI\\Tests' -Output Detailed"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "PowerShell 테스트 실행"
+    },
+    {
+      "label": "Environment: Setup WSL2",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\setup_wsl2_ai_tools.ps1"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "WSL2 환경 설정"
+    },
+    {
+      "label": "Documentation: Generate Docs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Get-Help -Name '${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\*.ps1' -Full | Out-File -FilePath '${workspaceFolder}\\docs\\generated-help.md'"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "PowerShell 도움말 문서 생성"
+    },
+    {
+      "label": "Logs: View Recent Logs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Get-ChildItem -Path '${workspaceFolder}\\Dev_Env\\ClI\\Logs' -Filter '*.log' | Sort-Object LastWriteTime -Descending | Select-Object -First 5 | Get-Content -Tail 20"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "최근 로그 파일 조회"
+    },
+    {
+      "label": "DCEC: Manage Logs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectLogs.ps1",
+        "-Action",
+        "View",
+        "-Subproject",
+        "DevEnv"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "DCEC 서브프로젝트별 통합 로그 관리"
+    },
+    {
+      "label": "DCEC: Search Logs (All Subprojects)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectLogs.ps1",
+        "-Action",
+        "Search",
+        "-Subproject",
+        "All"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "모든 서브프로젝트에서 로그 검색"
+    },
+    {
+      "label": "DCEC: Log Statistics",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectLogs.ps1",
+        "-Action",
+        "Stats",
+        "-Subproject",
+        "All"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "서브프로젝트별 로그 통계 및 분석"
+    },
+    {
+      "label": "DCEC: Monitor Dev Environment Logs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectLogs.ps1",
+        "-Action",
+        "Monitor",
+        "-Subproject",
+        "DevEnv"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "개발 환경 로그 실시간 모니터링",
+      "isBackground": true
+    },
+    {
+      "label": "DCEC: Manage Chat (All Subprojects)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectChat.ps1",
+        "-Action",
+        "List",
+        "-Subproject",
+        "All"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "모든 서브프로젝트 채팅 세션 목록"
+    },
+    {
+      "label": "DCEC: Search Chat",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectChat.ps1",
+        "-Action",
+        "Search",
+        "-Subproject",
+        "All"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "모든 서브프로젝트에서 채팅 내용 검색"
+    },
+    {
+      "label": "DCEC: Chat Statistics",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectChat.ps1",
+        "-Action",
+        "Stats",
+        "-Subproject",
+        "All"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "서브프로젝트별 채팅 사용 통계"
+    },
+    {
+      "label": "DCEC: Export Dev Environment Chat",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Manage-DCEC-SubprojectChat.ps1",
+        "-Action",
+        "Export",
+        "-Subproject",
+        "DevEnv",
+        "-ExportFormat",
+        "HTML"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "개발 환경 채팅 내용 HTML로 내보내기"
+    },
+    {
+      "label": "DCEC: Update Documentation Timestamp",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Get-Date -Format 'yyyy-MM-dd HH:mm:ss' | Out-File -FilePath '${workspaceFolder}\\Governance\\last_updated.txt' -Encoding UTF8; Write-Host 'Documentation timestamp updated'"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "거버넌스 문서 업데이트 타임스탬프 갱신"
+    },
+    {
+      "label": "DCEC: Open Development Guide",
+      "type": "shell",
+      "command": "code",
+      "args": [
+        "${workspaceFolder}\\Governance\\DCEC_Development_Guide_v1.0.md"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "detail": "DCEC 개발 가이드 문서 열기"
+    },
+    {
+      "label": "DCEC: 통합 대시보드",
+      "type": "shell",
+      "command": ".\\Manage-DCEC-Unified.ps1 -Action Dashboard",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "DCEC: 글로벌 검색",
+      "type": "shell",
+      "command": ".\\Manage-DCEC-Unified.ps1 -Action GlobalSearch -SearchTerm \"${input:searchTerm}\"",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "DCEC: 통합 백업",
+      "type": "shell",
+      "command": ".\\Manage-DCEC-Unified.ps1 -Action Backup",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

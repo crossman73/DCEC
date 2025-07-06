@@ -1,0 +1,59 @@
+{
+  // DCEC 프로젝트 디버깅 설정
+  // PowerShell, TypeScript, 그리고 통합 환경을 위한 설정
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PowerShell: DCECCore Module",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Import-Module -Force '${workspaceFolder}\\Dev_Env\\ClI\\Modules\\DCECCore\\DCECCore.psd1'",
+      "createTemporaryIntegratedConsole": true,
+      "args": []
+    },
+    {
+      "name": "PowerShell: Launch Current File",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${file}",
+      "args": [],
+      "createTemporaryIntegratedConsole": false
+    },
+    {
+      "name": "PowerShell: Initialize Environment",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\Initialize-DCECEnvironment.ps1",
+      "args": [],
+      "createTemporaryIntegratedConsole": true
+    },
+    {
+      "name": "PowerShell: Project Creation",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${workspaceFolder}\\Dev_Env\\ClI\\Scripts\\create_project_dirs.ps1",
+      "args": [],
+      "createTemporaryIntegratedConsole": true
+    },
+    {
+      "name": "Node.js: TypeScript Current File",
+      "type": "node",
+      "request": "launch",
+      "program": "${file}",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "cwd": "${workspaceFolder}\\Dev_Env\\IDE\\VScode",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "VS Code Extension Host",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "outFiles": ["${workspaceFolder}\\Dev_Env\\IDE\\VScode\\dist/**/*.js"]
+    }
+  ]
+}

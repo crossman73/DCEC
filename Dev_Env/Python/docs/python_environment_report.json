@@ -1,0 +1,21 @@
+{
+  "Environment": {
+    "User": "crossman",
+    "Architecture": "x64",
+    "ComputerName": "DREAMX",
+    "OS": "Microsoft Windows NT 10.0.26100.0",
+    "PowerShell": "7.5.2"
+  },
+  "SessionId": "dc8aed3f",
+  "Python": {
+    "Path": "C:\\Users\\crossman\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+    "Version": "3.11.9",
+    "Installed": true
+  },
+  "Timestamp": "2025-07-06 21:07:31",
+  "Pip": {
+    "Path": null,
+    "Version": null,
+    "Installed": false
+  }
+}

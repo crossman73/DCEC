@@ -1,0 +1,42 @@
+{
+  "projectType": "cli_tool",
+  "version": "1.0.0",
+  "description": "Click 기반 CLI 도구 템플릿",
+  "environmentSetup": {
+    "requiredModules": ["logging", "directory_setup"],
+    "pythonDependencies": [
+      "click",
+      "rich",
+      "questionary",
+      "pyyaml"
+    ],
+    "directories": [
+      "src",
+      "src/commands",
+      "src/utils",
+      "tests",
+      "docs",
+      "config"
+    ],
+    "files": {
+      "src/main.py": "import click\nfrom rich.console import Console\n\nconsole = Console()\n\n@click.group()\ndef cli():\n    \"\"\"${projectName} - CLI 도구\"\"\"\n    pass\n\n@cli.command()\ndef hello():\n    \"\"\"기본 테스트 명령어\"\"\"\n    console.print(f'[green]Welcome to {projectName}![/green]')\n\nif __name__ == '__main__':\n    cli()",
+      "src/commands/__init__.py": "",
+      "src/utils/__init__.py": "",
+      "setup.py": "from setuptools import setup, find_packages\n\nsetup(\n    name='${projectName}',\n    version='0.1.0',\n    packages=find_packages(),\n    install_requires=[\n        'click',\n        'rich',\n        'questionary',\n        'pyyaml',\n    ],\n    entry_points={\n        'console_scripts': [\n            '${projectName}=src.main:cli',\n        ],\n    },\n)",
+      "requirements.txt": "click\nrich\nquestionary\npyyaml\npytest",
+      "config/default.yaml": "# 기본 설정\napp:\n  name: ${projectName}\n  version: 0.1.0\n\nlogging:\n  level: INFO\n  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'"
+    }
+  },
+  "prompts": {
+    "setup": [
+      "CLI 도구 이름을 입력하세요:",
+      "명령어 자동 완성을 활성화하시겠습니까? (y/n):",
+      "로깅 레벨을 선택하세요 (DEBUG/INFO/WARN/ERROR):"
+    ]
+  },
+  "scripts": {
+    "install": "pip install -e .",
+    "test": "pytest",
+    "build": "python setup.py sdist bdist_wheel"
+  }
+}

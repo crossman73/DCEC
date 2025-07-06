@@ -1,0 +1,54 @@
+# CPSE 프로젝트 .gitignore
+
+# 보안 정보
+config/user-secrets.json
+*.env
+.env.*
+*.key
+*.pem
+
+# 로그 파일
+logs/*.log
+logs/*.txt
+*.log
+
+# 백업 파일
+backup/*.tar.gz
+backup/*.zip
+backup/*.bak
+backup/*/
+
+# 임시 파일
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE 설정
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# 운영 관련
+docker/volumes/
+docker/data/
+docker/*.env
+
+# Windows
+desktop.ini
+$RECYCLE.BIN/
+
+# PowerShell
+*.ps1xml
+
+# Node.js (MCP 서버용)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.dockerignore
+docker-compose.override.yml
