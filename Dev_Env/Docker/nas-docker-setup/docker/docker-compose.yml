@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: nas-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: your_user
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: your_database
+    volumes:
+      - ./services/postgres/data:/var/lib/postgresql/data
+      - ./services/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  n8n:
+    image: n8n:n8n
+    container_name: nas-dev-n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: n8n.dev.local
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_BASIC_AUTH_USER: your_user
+      N8N_BASIC_AUTH_PASSWORD: your_password
+    volumes:
+      - ./services/n8n:/home/node/.n8n
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: nas-dev-gitea
+    restart: unless-stopped
+    environment:
+      USER: git
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: nas-dev-postgres:5432
+      GITEA__database__NAME: your_database
+      GITEA__database__USER: your_user
+      GITEA__database__PASSWD: your_password
+    volumes:
+      - ./services/gitea:/data
+
+  vscode:
+    image: codercom/code-server:latest
+    container_name: nas-dev-code-server
+    restart: unless-stopped
+    environment:
+      PASSWORD: your_password
+    volumes:
+      - ./services/vscode:/home/coder/project
+
+  nginx:
+    image: nginx:latest
+    container_name: nas-dev-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - n8n
+      - gitea
+      - vscode
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:
+  gitea_data:
+  vscode_data:

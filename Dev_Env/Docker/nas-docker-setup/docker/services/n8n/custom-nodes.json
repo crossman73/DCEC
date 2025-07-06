@@ -1,0 +1,26 @@
+{
+  "nodes": [
+    {
+      "name": "Custom Node 1",
+      "type": "n8n-nodes-base.customNode1",
+      "parameters": {
+        "param1": "value1",
+        "param2": "value2"
+      },
+      "credentials": {
+        "apiKey": "={{$credentials.apiKey}}"
+      }
+    },
+    {
+      "name": "Custom Node 2",
+      "type": "n8n-nodes-base.customNode2",
+      "parameters": {
+        "paramA": "valueA",
+        "paramB": "valueB"
+      },
+      "credentials": {
+        "apiSecret": "={{$credentials.apiSecret}}"
+      }
+    }
+  ]
+}

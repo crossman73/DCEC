@@ -1,0 +1,37 @@
+version: '3.8'
+
+networks:
+  code-network:
+    driver: bridge
+
+volumes:
+  vscode_config:
+  vscode_extensions:
+
+services:
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    ports:
+      - "8484:8080"
+    environment:
+      PASSWORD: changeme123
+      SUDO_PASSWORD: changeme123
+      DEFAULT_WORKSPACE: /home/coder/workspace
+    volumes:
+      - /volume1/dev:/home/coder/workspace
+      - vscode_config:/home/coder/.config
+      - vscode_extensions:/home/coder/.local
+    user: "1000:1000"
+    networks:
+      - code-network
+    command: >
+      --bind-addr 0.0.0.0:8080
+      --auth password
+      --disable-telemetry
+      --disable-update-check
+      --install-extension ms-python.python
+      --install-extension ms-vscode.powershell
+      --install-extension GitLab.gitlab-workflow
+      /home/coder/workspace

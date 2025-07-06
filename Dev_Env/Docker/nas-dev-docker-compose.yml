@@ -1,0 +1,326 @@
+version: '3.8'
+
+# NAS Docker Development Environment
+# Path: /volume1/docker/dev/docker-compose.yml
+# Network Share: \\192.168.0.5\docker\dev\
+
+networks:
+  nas-dev-network:
+    driver: bridge
+    name: nas-dev-network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  # Persistent data volumes
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/data/postgres
+  
+  n8n_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/data/n8n
+  
+  gitea_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/data/gitea
+  
+  uptime_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/data/uptime
+  
+  portainer_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/data/portainer
+  
+  vscode_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/dev/config/vscode
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: nas-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-n8n}
+      POSTGRES_USER: ${POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /volume1/docker/dev/logs/postgres:/var/log/postgresql
+    networks:
+      - nas-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-n8n} -d ${POSTGRES_DB:-n8n}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # n8n Workflow Automation
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: nas-dev-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-31001}:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-changeme123}
+      WEBHOOK_URL: https://n8n.${BASE_DOMAIN:-crossman.synology.me}
+      N8N_BASE_URL: https://n8n.${BASE_DOMAIN:-crossman.synology.me}
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: Asia/Seoul
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
+      N8N_METRICS: "true"
+      N8N_METRICS_PREFIX: n8n_dev_
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /volume1/docker/dev/config/n8n:/home/node/.n8n/config
+      - /volume1/docker/dev/logs/n8n:/home/node/.n8n/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nas-dev-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # MCP Server for n8n integration
+  mcp-server:
+    image: leonardsellem/n8n-mcp-server:latest
+    container_name: nas-dev-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-31002}:31002"
+    environment:
+      N8N_API_URL: http://n8n:5678/api/v1
+      N8N_API_KEY: ${N8N_API_KEY:-default-api-key}
+      MCP_PORT: 31002
+      MCP_HOST: "0.0.0.0"
+      NODE_ENV: development
+      DEBUG: "mcp:*"
+    volumes:
+      - /volume1/docker/dev/logs/mcp:/app/logs
+    depends_on:
+      n8n:
+        condition: service_healthy
+    networks:
+      - nas-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:31002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # VS Code Server (Web IDE)
+  code-server:
+    image: codercom/code-server:latest
+    container_name: nas-dev-code-server
+    restart: unless-stopped
+    ports:
+      - "${CODE_PORT:-8484}:8080"
+    environment:
+      PASSWORD: ${VSCODE_PASSWORD:-changeme123}
+      SUDO_PASSWORD: ${VSCODE_PASSWORD:-changeme123}
+      DEFAULT_WORKSPACE: /home/coder/workspace
+    volumes:
+      - /volume1/docker/dev:/home/coder/workspace
+      - /volume1/dev:/home/coder/workspace/projects
+      - vscode_config:/home/coder/.config
+      - /volume1/docker/dev/logs/vscode:/home/coder/.local/share/code-server/logs
+    user: "1000:1000"
+    networks:
+      - nas-dev-network
+    command: >
+      --bind-addr 0.0.0.0:8080
+      --auth password
+      --disable-telemetry
+      --disable-update-check
+      --install-extension ms-python.python
+      --install-extension ms-vscode.powershell
+      --install-extension GitLab.gitlab-workflow
+      /home/coder/workspace
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Gitea Git Server
+  gitea:
+    image: gitea/gitea:latest
+    container_name: nas-dev-gitea
+    restart: unless-stopped
+    ports:
+      - "${GITEA_PORT:-3000}:3000"
+      - "${GITEA_SSH_PORT:-2222}:22"
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: ${POSTGRES_USER:-n8n}
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD:-changeme123}
+      GITEA__server__DOMAIN: git.${BASE_DOMAIN:-crossman.synology.me}
+      GITEA__server__SSH_DOMAIN: git.${BASE_DOMAIN:-crossman.synology.me}
+      GITEA__server__ROOT_URL: https://git.${BASE_DOMAIN:-crossman.synology.me}
+      GITEA__server__DISABLE_REGISTRATION: "false"
+      GITEA__service__ENABLE_CAPTCHA: "false"
+      GITEA__log__MODE: file
+      GITEA__log__ROOT_PATH: /data/gitea/log
+    volumes:
+      - gitea_data:/data
+      - /volume1/docker/dev/config/gitea:/data/gitea/conf
+      - /volume1/docker/dev/logs/gitea:/data/gitea/log
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - nas-dev-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Uptime Kuma Monitoring
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: nas-dev-uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "${UPTIME_PORT:-31003}:3001"
+    environment:
+      UPTIME_KUMA_PORT: 3001
+      UPTIME_KUMA_HOST: 0.0.0.0
+    volumes:
+      - uptime_data:/app/data
+      - /volume1/docker/dev/logs/uptime:/app/logs
+    networks:
+      - nas-dev-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Portainer Container Management
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: nas-dev-portainer
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-9000}:9000"
+    environment:
+      PORTAINER_HTTP_ENABLED: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+      - /volume1/docker/dev/logs/portainer:/logs
+    networks:
+      - nas-dev-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx Reverse Proxy (로컬 개발용)
+  nginx:
+    image: nginx:alpine
+    container_name: nas-dev-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-8080}:80"
+      - "${NGINX_HTTPS_PORT:-8443}:443"
+    volumes:
+      - /volume1/docker/dev/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /volume1/docker/dev/config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - /volume1/docker/dev/config/ssl:/etc/nginx/ssl:ro
+      - /volume1/docker/dev/logs/nginx:/var/log/nginx
+    networks:
+      - nas-dev-network
+    depends_on:
+      - n8n
+      - code-server
+      - gitea
+      - uptime-kuma
+      - portainer
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Watchtower for Auto Updates (개발 환경에서는 비활성화)
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: nas-dev-watchtower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_POLL_INTERVAL: 86400  # 24시간
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      WATCHTOWER_MONITOR_ONLY: "true"  # 개발환경에서는 모니터링만
+      WATCHTOWER_NOTIFICATIONS: none
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /volume1/docker/dev/logs/watchtower:/logs
+    networks:
+      - nas-dev-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

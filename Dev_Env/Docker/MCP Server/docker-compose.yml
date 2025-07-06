@@ -1,0 +1,28 @@
+version: '3.8'
+
+networks:
+  mcp-network:
+    driver: bridge
+
+services:
+  mcp-server:
+    image: leonardsellem/n8n-mcp-server:latest
+    container_name: mcp-server
+    restart: unless-stopped
+    ports:
+      - "31002:31002"
+    environment:
+      N8N_API_URL: http://192.168.0.5:31001/api/v1
+      N8N_API_KEY: "${N8N_API_KEY:-default-api-key}"
+      MCP_PORT: 31002
+      MCP_HOST: "0.0.0.0"
+      NODE_ENV: production
+      DEBUG: "mcp:*"
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:31002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -1,0 +1,58 @@
+version: '3.8'
+
+networks:
+  gitea-network:
+    driver: bridge
+
+volumes:
+  gitea_data:
+  postgres_data:
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: gitea-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gitea
+      POSTGRES_USER: gitea
+      POSTGRES_PASSWORD: changeme123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gitea-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitea -d gitea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: gitea
+      GITEA__database__PASSWD: changeme123
+      GITEA__server__DOMAIN: git.crossman.synology.me
+      GITEA__server__SSH_DOMAIN: git.crossman.synology.me
+      GITEA__server__ROOT_URL: https://git.crossman.synology.me
+      GITEA__server__DISABLE_REGISTRATION: "false"
+      GITEA__service__ENABLE_CAPTCHA: "false"
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - gitea-network
+    depends_on:
+      postgres:
+        condition: service_healthy
