@@ -1,0 +1,18 @@
+{
+  "Rules": [],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "LastUpdate": "2025-07-07 13:59:55",
+  "Message": "NAS 접속 방법 추가 - DSM 웹 인터페이스(192.168.0.5:5000) 접속 가능 확인",
+  "Guidelines": [],
+  "CurrentTasks": [],
+  "CompletedTasks": [],
+  "Project": "DCEC_Infrastructure",
+  "Environment": {
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "PowerShellVersion": "7.5.2",
+    "UserName": "crossman"
+  },
+  "NextSteps": [],
+  "SubProject": ""
+}

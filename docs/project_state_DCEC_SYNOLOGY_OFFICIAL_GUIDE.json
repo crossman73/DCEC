@@ -1,0 +1,18 @@
+{
+  "Rules": [],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "LastUpdate": "2025-07-07 13:49:13",
+  "Message": "시놀로지 공식 가이드 순서대로 SSH 키 설정 진행",
+  "Guidelines": [],
+  "CurrentTasks": [],
+  "CompletedTasks": [],
+  "Project": "DCEC_SYNOLOGY_OFFICIAL_GUIDE",
+  "Environment": {
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "PowerShellVersion": "7.5.2",
+    "UserName": "crossman"
+  },
+  "NextSteps": [],
+  "SubProject": ""
+}

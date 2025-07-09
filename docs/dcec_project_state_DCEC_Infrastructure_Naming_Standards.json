@@ -1,0 +1,18 @@
+{
+  "Rules": [],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "LastUpdate": "2025-07-07 14:27:13",
+  "Message": "⚠️ 서브프로젝트 구조 미고려 문제 발견 - DCEC 전체 구조 재검토 필요",
+  "Guidelines": [],
+  "CurrentTasks": [],
+  "CompletedTasks": [],
+  "Project": "DCEC_Infrastructure",
+  "Environment": {
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "PowerShellVersion": "7.5.2",
+    "UserName": "crossman"
+  },
+  "NextSteps": [],
+  "SubProject": "Naming_Standards"
+}

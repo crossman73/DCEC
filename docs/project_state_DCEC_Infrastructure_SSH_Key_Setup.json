@@ -1,0 +1,23 @@
+{
+  "Rules": [
+    "NAS 접속 방법: SSH(키 인증), DSM 웹(192.168.0.5:5000), SMB(\\\\192.168.0.5) - crossman 계정 사용",
+    "NAS .ssh 폴더 중복 확인 필요 - 올바른 C:\\Users\\cross/.ssh 경로에 authorized_keys 설정해야 함",
+    "NAS SSH 접속: 포트 22022 사용, crossman 계정, .ssh 폴더 중복 제거 필요",
+    "NAS SSH 포트: 22022, 홈디렉토리: /var/services/homes/crossman, .ssh 폴더 중복 제거 필요"
+  ],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "LastUpdate": "2025-07-07 14:15:42",
+  "Message": "DCEC 프로젝트 내 SSH 키 관리 구조 생성 - 중앙 집중식 키 관리 시스템 구축",
+  "Guidelines": [],
+  "CurrentTasks": [],
+  "CompletedTasks": [],
+  "Project": "DCEC_Infrastructure",
+  "Environment": {
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "PowerShellVersion": "7.5.2",
+    "UserName": "crossman"
+  },
+  "NextSteps": [],
+  "SubProject": "SSH_Key_Setup"
+}

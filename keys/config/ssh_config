@@ -1,0 +1,26 @@
+# DCEC Project SSH Configuration
+# NAS 접속 설정
+
+Host dcec-nas
+    HostName 192.168.0.5
+    Port 22022
+    User crossman
+    IdentityFile C:\dev\DCEC\keys\ssh\dcec_nas_id_rsa
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile C:\dev\DCEC\keys\config\known_hosts
+
+Host synology-nas
+    HostName 192.168.0.5
+    Port 22022
+    User crossman
+    IdentityFile C:\dev\DCEC\keys\ssh\dcec_nas_id_rsa
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile C:\dev\DCEC\keys\config\known_hosts
+
+# 기본 설정
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    TCPKeepAlive yes

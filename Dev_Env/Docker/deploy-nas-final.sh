@@ -1,115 +1,265 @@
 #!/bin/bash
-# NAS Direct Deployment Script
-# 실제 NAS에 SSH로 접속하여 Docker 환경을 배포합니다.
+# NAS Direct Deployment Script (감사 대응 최적화)
+# - 환경 자동 감지, SSH 키 자동화, 백업/롤백, 서비스별 헬스체크, 권한/보안, 장애 자동 대응, 서비스 격리, 통합 로그 등
+#   외부 감사 지적사항을 모두 반영한 버전입니다.
 
 set -euo pipefail
 
-# Configuration
-NAS_IP="192.168.0.5"
-NAS_PORT="22022"
-NAS_USER="crossman"
-LOCAL_DIR="d:/Dev/DCEC/Dev_Env/Docker"
-REMOTE_DIR="/volume1/docker/dev"
+# =========================
+# 환경 자동 감지
+# =========================
+detect_environment() {
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        LOCAL_DIR="/mnt/d/Dev/DCEC/Dev_Env/Docker"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        LOCAL_DIR="$HOME/Dev/DCEC/Dev_Env/Docker"
+    else
+        LOCAL_DIR="$HOME/Dev/DCEC/Dev_Env/Docker"
+    fi
+    REMOTE_DIR="/volume1/docker/dev"
+    read -p "Detected LOCAL_DIR: $LOCAL_DIR, REMOTE_DIR: $REMOTE_DIR. Continue? (y/n): " yn
+    [[ "$yn" =~ ^[Yy]$ ]] || exit 1
+}
 
-# Colors
+# =========================
+# SSH 키 자동화 및 검증
+# =========================
+setup_ssh_keys() {
+    if [[ ! -f "$HOME/.ssh/id_rsa" ]]; then
+        ssh-keygen -t rsa -b 4096 -N "" -f "$HOME/.ssh/id_rsa"
+    fi
+    chmod 700 "$HOME/.ssh"
+    chmod 600 "$HOME/.ssh/id_rsa" "$HOME/.ssh/id_rsa.pub"
+    ssh-copy-id -p "$NAS_PORT" "$NAS_USER@$NAS_IP" || { log_error "SSH key copy failed"; exit 1; }
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys"
+}
+
+# =========================
+# 컬러 로그 함수
+# =========================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+LOG_DIR="/volume1/docker/logs"
+log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; logger -p user.info -t deploy-nas-final "$1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; logger -p user.info -t deploy-nas-final "$1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; logger -p user.warning -t deploy-nas-final "$1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; logger -p user.err -t deploy-nas-final "$1"; }
 
-# Check SSH connection
+# =========================
+# 필수 파일 체크
+# =========================
+check_required_files() {
+    log_info "Checking required local files..."
+    local missing=0
+    for f in ".env.global" "docker-compose.yml" "nas-setup-complete.sh"; do
+        if [[ ! -f "${LOCAL_DIR}/$f" ]]; then
+            log_error "Required file missing: ${LOCAL_DIR}/$f"
+            missing=1
+        fi
+    done
+    if [[ $missing -eq 1 ]]; then
+        log_error "필수 파일이 누락되어 배포를 중단합니다."
+        exit 1
+    fi
+    log_success "All required files exist."
+}
+
+# =========================
+# SSH 연결 체크
+# =========================
 check_ssh_connection() {
     log_info "Checking SSH connection to NAS..."
     if ssh -p "${NAS_PORT}" -o ConnectTimeout=10 "${NAS_USER}@${NAS_IP}" "echo 'SSH connection successful'"; then
         log_success "SSH connection to NAS established"
-        return 0
     else
         log_error "Cannot connect to NAS via SSH"
-        log_info "Please ensure:"
-        log_info "1. NAS is accessible at ${NAS_IP}"
-        log_info "2. SSH is enabled on the NAS (port ${NAS_PORT})"
-        log_info "3. Your SSH key is properly configured"
         exit 1
     fi
 }
 
-# Transfer files to NAS
-transfer_files() {
-    log_info "Transferring files to NAS..."
-    
-    # Create remote directory if it doesn't exist
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "sudo mkdir -p ${REMOTE_DIR}"
-    
-    # Transfer main configuration files
-    log_info "Transferring main configuration files..."
-    scp -P "${NAS_PORT}" "${LOCAL_DIR}/.env" "${NAS_USER}@${NAS_IP}:${REMOTE_DIR}/"
-    scp -P "${NAS_PORT}" "${LOCAL_DIR}/docker-compose.yml" "${NAS_USER}@${NAS_IP}:${REMOTE_DIR}/"
-    scp -P "${NAS_PORT}" "${LOCAL_DIR}/nas-setup-complete.sh" "${NAS_USER}@${NAS_IP}:${REMOTE_DIR}/"
-    
-    # Transfer n8n API key
-    log_info "Transferring n8n API key..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "sudo mkdir -p ${REMOTE_DIR}/config/n8n"
-    scp -P "${NAS_PORT}" "${LOCAL_DIR}/n8n/20250626_n8n_API_KEY.txt" "${NAS_USER}@${NAS_IP}:${REMOTE_DIR}/config/n8n/api-keys.txt"
-    
-    # Set execute permissions
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "chmod +x ${REMOTE_DIR}/nas-setup-complete.sh"
-    
-    log_success "Files transferred successfully"
+# =========================
+# 백업/롤백
+# =========================
+create_backup() {
+    log_info "Creating backup snapshot..."
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "
+        ls -dt $REMOTE_DIR.bak.* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+        cp -a $REMOTE_DIR $REMOTE_DIR.bak.$(date +%Y%m%d%H%M%S)
+    "
+}
+rollback_deployment() {
+    log_warning "Rolling back deployment..."
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "rm -rf $REMOTE_DIR && mv $REMOTE_DIR.bak.* $REMOTE_DIR"
+    notify_slack "NAS 배포 롤백 발생: $(date) - $REMOTE_DIR 복구됨"
 }
 
-# Run setup script on NAS
+# =========================
+# 파일 전송 (rsync)
+# =========================
+transfer_files() {
+    log_info "Transferring files to NAS using rsync..."
+    rsync -avz -e "ssh -p ${NAS_PORT}" "${LOCAL_DIR}/" "${NAS_USER}@${NAS_IP}:${REMOTE_DIR}/"
+    if [[ $? -ne 0 ]]; then
+        log_error "rsync 파일 전송 실패"
+        auto_recovery "network_error"
+        exit 1
+    fi
+    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "sudo chown -R ${NAS_USER}:users ${REMOTE_DIR} && sudo chmod +x ${REMOTE_DIR}/nas-setup-complete.sh"
+    log_success "Files transferred and permissions set successfully"
+}
+
+# =========================
+# 권한/보안 자동화
+# =========================
+SERVICE_GROUP="${SERVICE_GROUP:-users}"
+fix_permissions() {
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "sudo chown -R $NAS_USER:$SERVICE_GROUP $REMOTE_DIR && sudo chmod -R 755 $REMOTE_DIR"
+    chmod 700 "$HOME/.ssh"
+    chmod 600 "$HOME/.ssh/id_rsa"
+}
+
+# =========================
+# 서비스별 .env 분리/격리 및 공통 사용자 정보 적용
+# =========================
+SERVICE_USER="crossman"
+SERVICE_PASS="data!5522"
+
+setup_service_env() {
+    for svc in n8n gitea code-server uptime-kuma portainer; do
+        cp "$LOCAL_DIR/.env.global" "$LOCAL_DIR/.env.$svc"
+        echo "USER_ID=${SERVICE_USER}"   >> "$LOCAL_DIR/.env.$svc"
+        echo "USER_PASS=${SERVICE_PASS}" >> "$LOCAL_DIR/.env.$svc"
+        # 서비스별 환경 변수 추가/수정 필요시 여기에
+    done
+}
+
+# =========================
+# 셋업 스크립트 실행
+# =========================
 run_setup_script() {
     log_info "Running setup script on NAS..."
-    
     ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && ./nas-setup-complete.sh"
-    
+    if [[ $? -ne 0 ]]; then
+        log_error "셋업 스크립트 실행 실패"
+        auto_recovery "permission_denied"
+        exit 1
+    fi
     log_success "Setup script execution completed"
 }
 
-# Deploy Docker services
+# =========================
+# 서비스별 설치 여부 확인 및 설치 함수 (이미지 존재 시 재설치 여부 확인)
+# =========================
+install_service() {
+    local svc="$1"
+    # 원격 NAS에서 해당 서비스 컨테이너/이미지 존재 여부 확인
+    local exists
+    exists=$(ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker images --format '{{.Repository}}' | grep -w $svc || true")
+    if [[ -n "$exists" ]]; then
+        read -p "$svc 도커 이미지가 이미 존재합니다. 재설치(업데이트) 하시겠습니까? (y/n): " yn
+        if [[ "$yn" =~ ^[Yy]$ ]]; then
+            ENABLED_SERVICES+=("$svc")
+        else
+            log_info "$svc 서비스는 재설치하지 않습니다."
+        fi
+    else
+        read -p "$svc 서비스를 설치하시겠습니까? (y/n): " yn
+        if [[ "$yn" =~ ^[Yy]$ ]]; then
+            ENABLED_SERVICES+=("$svc")
+        else
+            log_info "$svc 서비스는 설치하지 않습니다."
+        fi
+    fi
+}
+
+# =========================
+# 서비스별 설치 여부 확인
+# =========================
+select_services_to_install() {
+    ENABLED_SERVICES=()
+    for svc in n8n gitea code-server uptime-kuma portainer; do
+        install_service "$svc"
+    done
+}
+
+# =========================
+# Docker 서비스 배포(선택된 서비스만)
+# =========================
 deploy_services() {
-    log_info "Deploying Docker services on NAS..."
-    
-    # Update .env with proper values
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && sed -i 's|DATA_ROOT=.*|DATA_ROOT=${REMOTE_DIR}/data|g' .env"
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=changeme123|g' .env"
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && sed -i 's|N8N_PORT=.*|N8N_PORT=31001|g' .env"
-    
-    # Start services
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose down --remove-orphans"
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose up -d"
-    
-    log_success "Docker services deployed"
+    log_info "Deploying selected Docker services on NAS..."
+    local svc_args=()
+    for svc in "${ENABLED_SERVICES[@]}"; do
+        svc_args+=("$svc")
+    done
+    if [[ ${#svc_args[@]} -eq 0 ]]; then
+        log_warning "선택된 서비스가 없습니다. 배포를 중단합니다."
+        exit 0
+    fi
+    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker compose down --remove-orphans"
+    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker compose up -d ${svc_args[*]}"
+    log_success "Selected Docker services deployed: ${svc_args[*]}"
 }
 
-# Health check
-health_check() {
-    log_info "Performing health check..."
-    
-    sleep 30  # Wait for services to start
-    
-    # Check service status
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose ps"
-    
-    log_info "Health check completed"
+# =========================
+# 서비스별 헬스체크 및 장애 자동 대응 (code-server 보완)
+# =========================
+declare -A PORTS=( [n8n]=31001 [gitea]=8484 [code-server]=3000 [uptime-kuma]=31003 [portainer]=9000 )
+validate_service_health() {
+    for svc in "${!PORTS[@]}"; do
+        for i in {1..5}; do
+            if [[ "$svc" == "code-server" ]]; then
+                # code-server는 /health 미지원 → /로 200 응답 체크
+                if ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "curl -fs -o /dev/null -w '%{http_code}' http://localhost:${PORTS[$svc]}/ | grep -q 200"; then
+                    log_success "$svc health check passed"
+                    break
+                fi
+            else
+                # health endpoint가 없는 서비스는 docker-compose.yml의 healthcheck 옵션과 일치하는지 점검 필요
+                if ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "curl -fs http://localhost:${PORTS[$svc]}/health"; then
+                    log_success "$svc health check passed"
+                    break
+                fi
+            fi
+            if [[ $i -eq 5 ]]; then
+                log_error "$svc health check failed after 5 attempts"
+                auto_recovery "service_failed" "$svc"
+                notify_slack "[$svc] 서비스 헬스체크 5회 실패, 롤백 또는 수동 점검 필요"
+                return 1
+            else
+                sleep 5
+            fi
+        done
+    done
 }
 
-# Display service information
+# =========================
+# 장애 자동 대응
+# =========================
+auto_recovery() {
+    local errtype="$1" svc="${2:-}"
+    case "$errtype" in
+        permission_denied) fix_permissions ;;
+        service_failed) rollback_deployment ;;
+        network_error) log_error "Network error, manual intervention required" ;;
+    esac
+}
+
+# =========================
+# 서비스 정보 출력
+# =========================
 display_service_info() {
     log_info "Service Information:"
     echo ""
     echo "=== Service URLs ==="
-    echo "n8n:              http://192.168.0.5:31001"
-    echo "Gitea:            http://192.168.0.5:8484"
-    echo "Code Server:      http://192.168.0.5:3000"
-    echo "Uptime Kuma:      http://192.168.0.5:31003"
-    echo "Portainer:        http://192.168.0.5:9000"
+    echo "n8n:              http://${NAS_IP}:31001"
+    echo "Gitea:            http://${NAS_IP}:8484"
+    echo "Code Server:      http://${NAS_IP}:3000"
+    echo "Uptime Kuma:      http://${NAS_IP}:31003"
+    echo "Portainer:        http://${NAS_IP}:9000"
     echo ""
     echo "=== Sub-domain URLs (if configured) ==="
     echo "n8n:              https://n8n.crossman.synology.me"
@@ -124,165 +274,73 @@ display_service_info() {
     echo ""
 }
 
-# Debug function for troubleshooting
-debug_deployment() {
-    log_info "=== Debug Information ==="
-    
-    # Check NAS connectivity
-    log_info "Testing NAS connectivity..."
-    ping -c 4 "${NAS_IP}" || log_warning "Ping failed"
-    
-    # Check SSH port
-    log_info "Testing SSH port ${NAS_PORT}..."
-    nc -zv "${NAS_IP}" "${NAS_PORT}" || log_warning "SSH port ${NAS_PORT} not accessible"
-    
-    # Check Docker status on NAS
-    log_info "Checking Docker status on NAS..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "docker --version" || log_warning "Docker not available"
-    
-    # Check remote directory
-    log_info "Checking remote directory..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "ls -la ${REMOTE_DIR}" || log_warning "Remote directory not accessible"
-    
-    # Check docker-compose status
-    log_info "Checking docker-compose status..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose ps" || log_warning "Docker-compose not running"
-    
-    log_info "Debug information collection completed"
+# =========================
+# 통합 모니터링/알림 (예시: Slack)
+# =========================
+notify_slack() {
+    [[ -z "${SLACK_WEBHOOK_URL:-}" ]] && return
+    curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"$1\"}" "$SLACK_WEBHOOK_URL"
 }
 
-# Service management functions
-start_services() {
-    log_info "Starting all services..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose up -d"
-    log_success "Services started"
-}
+# =========================
+# 기존 Docker 서비스/설정 점검
+# =========================
+check_existing_docker_state() {
+    log_info "기존 Docker 컨테이너 및 포트 상태를 점검합니다."
 
-stop_services() {
-    log_info "Stopping all services..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose down"
-    log_success "Services stopped"
-}
+    # 실행 중인 컨테이너
+    log_info "[실행 중인 컨테이너 목록]"
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
-restart_services() {
-    log_info "Restarting all services..."
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose restart"
-    log_success "Services restarted"
-}
+    # compose 프로젝트
+    log_info "[docker compose 프로젝트 목록]"
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker compose ls || echo 'compose 프로젝트 없음'"
 
-# Service logs
-view_service_logs() {
-    local service_name="${1:-}"
-    if [[ -z "${service_name}" ]]; then
-        log_info "Viewing all service logs..."
-        ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose logs --tail=100 -f"
-    else
-        log_info "Viewing logs for service: ${service_name}"
-        ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose logs --tail=100 -f ${service_name}"
-    fi
-}
+    # 포트 점유 현황
+    log_info "[컨테이너별 포트 점유 현황]"
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker ps --format 'table {{.Names}}\t{{.Ports}}'"
 
-# Service status check
-check_service_status() {
-    log_info "Checking service status..."
-    
-    # Docker container status
-    ssh -p "${NAS_PORT}" "${NAS_USER}@${NAS_IP}" "cd ${REMOTE_DIR} && docker-compose ps"
-    
-    # Port checks
-    log_info "Checking port accessibility..."
-    for port in 31001 8484 3000 31003 9000; do
-        if nc -zv "${NAS_IP}" "${port}" 2>/dev/null; then
-            log_success "Port ${port} is accessible"
-        else
-            log_warning "Port ${port} is not accessible"
-        fi
-    done
-    
-    # Quick health check
-    log_info "Quick health check..."
-    curl -s --connect-timeout 5 "http://${NAS_IP}:31001" > /dev/null && log_success "n8n is responding" || log_warning "n8n not responding"
-    curl -s --connect-timeout 5 "http://${NAS_IP}:8484" > /dev/null && log_success "Gitea is responding" || log_warning "Gitea not responding"
-    curl -s --connect-timeout 5 "http://${NAS_IP}:3000" > /dev/null && log_success "Code Server is responding" || log_warning "Code Server not responding"
-    curl -s --connect-timeout 5 "http://${NAS_IP}:31003" > /dev/null && log_success "Uptime Kuma is responding" || log_warning "Uptime Kuma not responding"
-    curl -s --connect-timeout 5 "http://${NAS_IP}:9000" > /dev/null && log_success "Portainer is responding" || log_warning "Portainer not responding"
-}
+    # 불필요한 볼륨/네트워크/이미지
+    log_info "[사용 중인 볼륨]"
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker volume ls"
+    log_info "[사용 중인 네트워크]"
+    ssh -p "$NAS_PORT" "$NAS_USER@$NAS_IP" "docker network ls"
 
-# Usage information
-usage() {
-    echo "Usage: $0 [command]"
     echo ""
-    echo "Commands:"
-    echo "  deploy      - Full deployment (default)"
-    echo "  start       - Start services"
-    echo "  stop        - Stop services"
-    echo "  restart     - Restart services"
-    echo "  status      - Check service status"
-    echo "  logs [service] - View service logs"
-    echo "  debug       - Debug deployment"
-    echo "  info        - Display service information"
-    echo ""
-    echo "Examples:"
-    echo "  $0 deploy         # Full deployment"
-    echo "  $0 status         # Check status"
-    echo "  $0 logs n8n       # View n8n logs"
-    echo "  $0 debug          # Debug information"
-    echo ""
+    read -p "기존 Docker 서비스/설정이 위와 같이 남아 있습니다. 계속 진행할까요? (y/n): " yn
+    [[ "$yn" =~ ^[Yy]$ ]] || { log_info "배포를 중단합니다."; exit 0; }
 }
 
-# Main function
+# =========================
+# 메인 실행부
+# =========================
 main() {
-    local command="${1:-deploy}"
-    
-    case "${command}" in
-        deploy)
-            log_info "=========================================="
-            log_info "NAS Docker Environment Deployment"
-            log_info "=========================================="
-            
-            check_ssh_connection
-            transfer_files
-            run_setup_script
-            deploy_services
-            health_check
-            display_service_info
-            
-            log_success "Deployment completed successfully!"
-            log_info "Check the service URLs above to verify everything is working."
-            ;;
-        start)
-            start_services
-            ;;
-        stop)
-            stop_services
-            ;;
-        restart)
-            restart_services
-            ;;
-        status)
-            check_service_status
-            ;;
-        logs)
-            view_service_logs "${2:-}"
-            ;;
-        debug)
-            debug_deployment
-            ;;
-        info)
-            display_service_info
-            ;;
-        help|--help|-h)
-            usage
-            ;;
-        *)
-            log_error "Unknown command: ${command}"
-            usage
-            exit 1
-            ;;
-    esac
+    detect_environment
+    setup_ssh_keys
+    check_ssh_connection
+
+    # 기존 Docker 상태 점검
+    check_existing_docker_state
+
+    check_required_files
+    ensure_log_dir
+    create_backup
+    setup_service_env
+    transfer_files
+    fix_permissions
+    run_setup_script
+
+    # 서비스별 설치 여부 확인
+    select_services_to_install
+
+    deploy_services
+    validate_service_health
+    display_service_info
+    log_success "Deployment completed successfully!"
+    log_info "Check the service URLs above to verify everything is working."
+    notify_slack "NAS 배포 자동화 성공: $(date)"
 }
 
-# Execute if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

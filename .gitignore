@@ -7,6 +7,12 @@ config/user-secrets.json
 *.key
 *.pem
 
+# DCEC SSH Keys and Sensitive Files
+keys/ssh/dcec_nas_id_rsa
+keys/ssh/dcec_nas_id_rsa.pub
+keys/config/known_hosts
+keys/config/*.backup.*
+
 # 로그 파일
 logs/*.log
 logs/*.txt

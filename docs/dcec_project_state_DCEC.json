@@ -1,0 +1,18 @@
+{
+  "Rules": [],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "LastUpdate": "2025-07-07 14:39:37",
+  "Message": "Governance 프로젝트 완전 설계 완료 - 통합 관리 시스템 아키텍처, 구현 전략, 로드맵 수립. 3순위 후순위 프로젝트로 Dev_Env/Infra_Architecture 완료 후 구현 예정.",
+  "Guidelines": [],
+  "CurrentTasks": [],
+  "CompletedTasks": [],
+  "Project": "DCEC",
+  "Environment": {
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "PowerShellVersion": "7.5.2",
+    "UserName": "crossman"
+  },
+  "NextSteps": [],
+  "SubProject": ""
+}

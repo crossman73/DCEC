@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nasdb
+      POSTGRES_USER: nasuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+      TZ: ${TZ:-Asia/Seoul}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nas-services
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nasuser -d nasdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: nas-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT}:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: nasdb
+      DB_POSTGRESDB_USER: nasuser
+      DB_POSTGRESDB_PASSWORD: ${DB_PASSWORD}
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      TZ: ${TZ:-Asia/Seoul}
+      WEBHOOK_URL: https://n8n.${BASE_DOMAIN}
+      N8N_BASE_URL: https://n8n.${BASE_DOMAIN}
+      N8N_SECURE_COOKIE: "false"
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
+      N8N_METRICS: "true"
+      N8N_METRICS_PREFIX: n8n_
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ${DATA_ROOT}/n8n/files:/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nas-services
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  nas-services:
+    external: true
+    name: nas-services-network
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT}/postgres
+  n8n_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT}/n8n

@@ -1,0 +1,24 @@
+{
+  "SubProject": "",
+  "Rules": [
+    "모든 작업은 로그를 남겨 디버깅과 추적이 가능해야 함",
+    "문서 업데이트는 작업과 동시에 진행",
+    "각 단계별 테스트와 검증 수행",
+    "IDE 재시작 전 반드시 상태 저장",
+    "오류 발생 시 즉시 로깅 및 문제 추적"
+  ],
+  "Guidelines": [],
+  "Environment": {
+    "PowerShellVersion": "7.5.2",
+    "ComputerName": "OH-NOTEBOOKYM",
+    "OSVersion": "Microsoft Windows NT 10.0.26200.0",
+    "UserName": "crossman"
+  },
+  "CompletedTasks": [],
+  "NextSteps": [],
+  "WorkingDirectory": "C:\\dev\\DCEC",
+  "Project": "CPSE_n8n",
+  "Message": "NAS에서 SSH 키 생성 성공 - 다음 단계: 키 확인 및 authorized_keys 설정",
+  "CurrentTasks": [],
+  "LastUpdate": "2025-07-07 13:11:56"
+}

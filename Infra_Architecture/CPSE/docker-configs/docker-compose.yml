@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=dcec_n8n_2024
+      - N8N_HOST=n8n.crossman.synology.me
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.crossman.synology.me/
+      - GENERIC_TIMEZONE=Asia/Seoul
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - dcec_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.crossman.synology.me`)"
+      - "traefik.http.routers.n8n.tls=true"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PASSWORD=dcec_code_2024
+      - SUDO_PASSWORD=dcec_code_2024
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Seoul
+    volumes:
+      - code_data:/home/coder
+      - code_projects:/home/coder/projects
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - dcec_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code.rule=Host(`code.crossman.synology.me`)"
+      - "traefik.http.routers.code.tls=true"
+      - "traefik.http.routers.code.tls.certresolver=letsencrypt"
+      - "traefik.http.services.code.loadbalancer.server.port=8080"
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__DOMAIN=git.crossman.synology.me
+      - GITEA__server__SSH_DOMAIN=git.crossman.synology.me
+      - GITEA__server__ROOT_URL=https://git.crossman.synology.me/
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__security__SECRET_KEY=dcec_gitea_secret_key_2024
+      - GITEA__security__INTERNAL_TOKEN=dcec_gitea_internal_token_2024
+    volumes:
+      - gitea_data:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - dcec_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.crossman.synology.me`)"
+      - "traefik.http.routers.gitea.tls=true"
+      - "traefik.http.routers.gitea.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8080"  # Traefik dashboard
+    environment:
+      - TZ=Asia/Seoul
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/data
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@crossman.synology.me"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--log.level=INFO"
+    networks:
+      - dcec_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.crossman.synology.me`)"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+volumes:
+  n8n_data:
+    driver: local
+  code_data:
+    driver: local
+  code_projects:
+    driver: local
+  gitea_data:
+    driver: local
+  traefik_data:
+    driver: local
+
+networks:
+  dcec_network:
+    driver: bridge
+    name: dcec_network
