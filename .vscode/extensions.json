@@ -1,0 +1,22 @@
+{
+  // 이 프로젝트에서 권장하는 VSCode 확장 프로그램 목록입니다.
+  // VSCode에서 이 파일을 인식하고, 설치되지 않은 확장 프로그램을 추천해줍니다.
+  "recommendations": [
+    // Dockerfile 및 docker-compose.yml 지원
+    "ms-azuretools.vscode-docker",
+    // 원격 서버 접속 및 개발용
+    "ms-vscode-remote.remote-ssh",
+    // 셸 스크립트(.sh) 정적 분석
+    "timonwong.shellcheck",
+    // 셸 스크립트 포맷터
+    "foxundermoon.shell-format",
+    // PowerShell 스크립트 지원
+    "ms-vscode.powershell",
+    // YAML 파일 지원 강화
+    "redhat.vscode-yaml",
+    // .env 파일 구문 강조
+    "mikestead.dotenv",
+    // Git 기능 강화
+    "eamodio.gitlens"
+  ]
+}

@@ -3,16 +3,56 @@
 # scp 완전 제거, rsync-only, 경로 변환, 퍼미션 오류 무시, 환경 안내, 체크리스트 포함
 # 반드시 Windows PC(PowerShell, Cygwin, Git Bash 등)에서 실행! NAS에서 실행 금지!
 
-param(
-    [string]$NasIP = "192.168.0.5",
-    [string]$NasPort = "22022",
-    [string]$NasUser = "crossman",
-    [string]$LocalDir = "c:\Dev\DCEC\Dev_Env\Docker",
-    [string]$RemoteDir = "/volume1/docker/",
-    [string]$Command = "deploy",
-    [string]$SshKeyPath = "$env:USERPROFILE\.ssh\id_rsa",
-    [switch]$NoPause = $false
-)
+# Define default values for parameters
+$NasIP = "192.168.0.5"
+$NasPort = "22022"
+$NasUser = "crossman"
+$LocalDir = "d:\Dev\DCEC\Dev_Env\Docker"
+$RemoteDir = "/volume1/docker/"
+$Command = "deploy"
+$SshKeyPath = ""
+$NoPause = $false
+
+# Parse command-line arguments to override defaults
+for ($i = 0; $i -lt $args.Length; $i++) {
+    switch ($args[$i]) {
+        "-NasIP" { $NasIP = $args[++$i] }
+        "-NasPort" { $NasPort = $args[++$i] }
+        "-NasUser" { $NasUser = $args[++$i] }
+        "-LocalDir" { $LocalDir = $args[++$i] }
+        "-RemoteDir" { $RemoteDir = $args[++$i] }
+        "-Command" { $Command = $args[++$i] }
+        "-SshKeyPath" { $SshKeyPath = $args[++$i] }
+        "-NoPause" { $NoPause = $true }
+    }
+}
+
+# 자동으로 최적의 SSH 키를 찾기 위한 헬퍼 함수
+function Find-DefaultSshKey {
+    $defaultSshPath = "$env:USERPROFILE\.ssh"
+    # SSH 키 우선순위 정의 (최신/보안 권장 순)
+    $keyPrecedence = @(
+        "id_ed25519",
+        "id_ecdsa",
+        "id_rsa"
+    )
+
+    foreach ($keyFile in $keyPrecedence) {
+        $keyPath = Join-Path -Path $defaultSshPath -ChildPath $keyFile
+        if (Test-Path $keyPath) {
+            # 가장 먼저 찾아낸 키를 기본값으로 반환
+            return $keyPath
+        }
+    }
+
+    # 어떤 키도 찾지 못하면, 기존의 기본값(id_rsa)을 반환
+    # 이후 스크립트의 키 존재 여부 체크 로직에서 오류를 처리함
+    return Join-Path -Path $defaultSshPath -ChildPath "id_rsa"
+}
+
+if (-not $SshKeyPath) {
+    $SshKeyPath = Find-DefaultSshKey
+}
 
 function Write-ColorOutput {
     param([string]$Message, [string]$Color = "White")
@@ -35,7 +75,7 @@ if (Test-Path $gitUsrBin) {
 function Check-RsyncInstalled {
     $rsyncCheck = Get-Command rsync -ErrorAction SilentlyContinue
     if (-not $rsyncCheck) {
-        Write-ColorOutput @"
+        Write-ColorOutput "@
 rsync가 설치되어 있지 않습니다.
 
 - Windows용 Git for Windows에는 rsync가 포함되어 있지 않습니다.
@@ -46,7 +86,7 @@ rsync가 설치되어 있지 않습니다.
   3. Cygwin 설치 시 rsync, openssh 패키지 포함 설치
 
 설치 후 PowerShell을 재시작하거나, 환경변수 PATH를 확인하세요.
-"@ "Red"
+@" "Red"
         Pause-IfNeeded "Press any key to exit..."
         exit 1
     }
@@ -63,7 +103,7 @@ if (!(Test-Path $SshKeyPath)) {
 
 function Convert-ToCygwinPath {
     param([string]$winPath)
-    $cygPath = $winPath -replace '\\','/'
+    $cygPath = $winPath -replace '\\', '/'
     if ($cygPath -match '^([a-zA-Z]):') {
         $drive = $Matches[1].ToLower()
         $cygPath = "/cygdrive/$drive" + $cygPath.Substring(2)
@@ -81,7 +121,8 @@ function Sync-FilesToNAS {
     if ($LASTEXITCODE -eq 0) {
         Write-ColorOutput "✓ rsync 파일 동기화 완료" "Green"
         return $true
-    } else {
+    }
+    else {
         Write-ColorOutput "✗ rsync 파일 동기화 실패" "Red"
         Write-ColorOutput "실패 시 Cygwin 터미널에서 직접 실행하거나, DSM File Station 등으로 수동 복사하세요." "Yellow"
         return $false
@@ -97,13 +138,14 @@ function Test-LocalFiles {
             (Join-Path $LocalDir "nas-setup-complete.sh")
         )
         $optionalFiles = @(
-            (Join-Path $LocalDir "n8n\20250626_n8n_API_KEY.txt")
+            (Join-Path $LocalDir "n8n\\20250626_n8n_API_KEY.txt")
         )
         $allGood = $true
         foreach ($file in $requiredFiles) {
             if (Test-Path $file) {
                 Write-ColorOutput "✓ Found: $file" "Green"
-            } else {
+            }
+            else {
                 Write-ColorOutput "✗ Missing: $file" "Red"
                 $allGood = $false
             }
@@ -111,12 +153,14 @@ function Test-LocalFiles {
         foreach ($file in $optionalFiles) {
             if (Test-Path $file) {
                 Write-ColorOutput "✓ Found: $file" "Green"
-            } else {
+            }
+            else {
                 Write-ColorOutput "! Optional: $file (will create placeholder)" "Yellow"
             }
         }
         return $allGood
-    } catch {
+    }
+    catch {
         Write-ColorOutput "오류: $($_.Exception.Message)" "Red"
         return $false
     }
@@ -161,7 +205,8 @@ function New-RemoteDirectoryStructure {
         ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "sudo chmod -R 755 ${RemoteDir} 2>/dev/null || true"
         Write-ColorOutput "Directory structure and permissions set successfully" "Green"
         return $true
-    } catch {
+    }
+    catch {
         Write-ColorOutput "디렉토리 구조 생성 실패: $($_.Exception.Message)" "Red"
         return $false
     }
@@ -177,7 +222,8 @@ function Copy-FileWithRetry {
                 Write-ColorOutput "✓ Successfully transferred: $(Split-Path $LocalFile -Leaf)" "Green"
                 return $true
             }
-        } catch {
+        }
+        catch {
             Write-ColorOutput "Transfer attempt $i failed: $($_.Exception.Message)" "Yellow"
         }
         if ($i -lt $MaxRetries) { Start-Sleep -Seconds 2 }
@@ -202,13 +248,15 @@ function Test-RemoteFiles {
             $exists = ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "test -f '$file' && echo 'exists' || echo 'missing'"
             if ($exists -eq "exists") {
                 Write-ColorOutput "✓ Remote file exists: $file" "Green"
-            } else {
+            }
+            else {
                 Write-ColorOutput "✗ Remote file missing: $file" "Red"
                 $allGood = $false
             }
         }
         return $allGood
-    } catch {
+    }
+    catch {
         Write-ColorOutput "원격 파일 검증 실패: $($_.Exception.Message)" "Red"
         return $false
     }
@@ -224,7 +272,8 @@ function Test-SSHConnection {
         }
         Write-ColorOutput "SSH connection failed (no response)" "Red"
         return $false
-    } catch {
+    }
+    catch {
         Write-ColorOutput "Cannot connect to NAS via SSH: $($_.Exception.Message)" "Red"
         Write-ColorOutput "1. NAS IP/포트/계정/키 확인" "White"
         return $false
@@ -277,7 +326,7 @@ function Copy-FilesToNAS {
         }
 
         # n8n API Key가 없으면 placeholder 생성
-        $n8nApiKey = Join-Path $LocalDir "n8n\20250626_n8n_API_KEY.txt"
+        $n8nApiKey = Join-Path $LocalDir "n8n\\20250626_n8n_API_KEY.txt"
         if (!(Test-Path $n8nApiKey)) {
             Write-ColorOutput "Warning: n8n API key not found at $n8nApiKey" "Yellow"
             ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "echo 'n8n_api_key_placeholder' > ${RemoteDir}config/n8n/api-keys.txt"
@@ -287,7 +336,8 @@ function Copy-FilesToNAS {
         ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "chmod 644 ${RemoteDir}.env ${RemoteDir}docker-compose.yml 2>/dev/null || true"
         Write-ColorOutput "Files transferred successfully (rsync)" "Green"
         return $true
-    } catch {
+    }
+    catch {
         Write-ColorOutput "파일 전송 실패: $($_.Exception.Message)" "Red"
         return $false
     }
@@ -299,7 +349,8 @@ function Invoke-SetupScript {
         ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "cd ${RemoteDir} && ./nas-setup-complete.sh"
         Write-ColorOutput "Setup script execution completed" "Green"
         return $true
-    } catch {
+    }
+    catch {
         Write-ColorOutput "셋업 스크립트 실행 실패: $($_.Exception.Message)" "Red"
         return $false
     }
@@ -314,11 +365,13 @@ function Select-ServicesToDeploy {
             if ($exists) {
                 $answer = Read-Host "$svc 이미지가 이미 존재합니다. 재설치(업데이트) 하시겠습니까? (y/n)"
                 if ($answer -match "^[Yy]") { $enabled += $svc }
-            } else {
+            }
+            else {
                 $answer = Read-Host "$svc 서비스를 새로 설치하시겠습니까? (y/n)"
                 if ($answer -match "^[Yy]") { $enabled += $svc }
             }
-        } catch {
+        }
+        catch {
             Write-ColorOutput "서비스 확인 오류($svc): $($_.Exception.Message)" "Red"
         }
     }
@@ -339,7 +392,8 @@ function Deploy-DockerServices {
         ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "cd ${RemoteDir} && docker compose up -d $svcArgs"
         Write-ColorOutput "Docker services deployed: $svcArgs" "Green"
         return $true
-    } catch {
+    }
+    catch {
         Write-ColorOutput "Failed to deploy services: $_" "Red"
         return $false
     }
@@ -352,7 +406,8 @@ function Test-ServicesHealth {
         ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "cd ${RemoteDir} && docker compose ps"
         Write-ColorOutput "Health check completed" "Green"
         return $true
-    } catch {
+    }
+    catch {
         Write-ColorOutput "Health check failed: $_" "Red"
         return $false
     }
@@ -409,7 +464,8 @@ function Rollback-Deployment {
             }
         }
         Write-ColorOutput "롤백 완료" "Red"
-    } else {
+    }
+    else {
         Write-ColorOutput "롤백 로그 파일이 없습니다." "Yellow"
     }
 }
@@ -529,7 +585,8 @@ function Set-RemotePermissions {
         try {
             ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "chown -R ${NasUser}:users '$dir' 2>/dev/null || true"
             ssh -i $SshKeyPath -p $NasPort "${NasUser}@${NasIP}" "chmod -R 755 '$dir' 2>/dev/null || true"
-        } catch {
+        }
+        catch {
             Write-ColorOutput "권한 변경 실패(무시): $dir" "Yellow"
         }
     }

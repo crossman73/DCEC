@@ -1,286 +1,82 @@
-version: '3.8'
-
-# 공통 환경 변수 정의
-x-common-variables: &common-variables
-  TZ: ${TZ:-Asia/Seoul}
-  
-x-restart-policy: &restart-policy
-  restart: unless-stopped
-
-networks:
-  nas-services:
-    external: true
-    name: nas-services-network
-
-volumes:
-  postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/postgres
-  n8n_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/n8n
-  gitea_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/gitea
-  code_server_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/code-server
-  uptime_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/uptime-kuma
-  portainer_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_ROOT}/portainer
-
 services:
-  # PostgreSQL Database (모든 서비스의 기반)
-  postgres:
-    <<: *restart-policy
-    image: postgres:16-alpine
-    container_name: nas-postgres
-    environment:
-      <<: *common-variables
-      POSTGRES_DB: nasdb
-      POSTGRES_USER: nasuser
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - nas-services
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nasuser -d nasdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # n8n Workflow Automation
-  n8n:
-    <<: *restart-policy
-    image: docker.n8n.io/n8nio/n8n:latest
-    container_name: nas-n8n
-    ports:
-      - "${N8N_PORT}:5678"
-    environment:
-      <<: *common-variables
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: nasdb
-      DB_POSTGRESDB_USER: nasuser
-      DB_POSTGRESDB_PASSWORD: ${DB_PASSWORD}
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: admin
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
-      WEBHOOK_URL: https://n8n.${BASE_DOMAIN}
-      N8N_BASE_URL: https://n8n.${BASE_DOMAIN}
-      N8N_SECURE_COOKIE: "false"
-      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
-      N8N_METRICS: "true"
-      N8N_METRICS_PREFIX: n8n_
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ${DATA_ROOT}/n8n/files:/files
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - nas-services
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Gitea Git Server
   gitea:
-    <<: *restart-policy
     image: gitea/gitea:latest
-    container_name: nas-gitea
-    ports:
-      - "${GITEA_HTTP_PORT}:3000"
-      - "${GITEA_SSH_PORT}:22"
+    container_name: gitea
     environment:
-      <<: *common-variables
-      USER_UID: 1000
-      USER_GID: 1000
-      GITEA__database__DB_TYPE: postgres
-      GITEA__database__HOST: postgres:5432
-      GITEA__database__NAME: nasdb
-      GITEA__database__USER: nasuser
-      GITEA__database__PASSWD: ${DB_PASSWORD}
-      GITEA__server__DOMAIN: git.${BASE_DOMAIN}
-      GITEA__server__SSH_DOMAIN: git.${BASE_DOMAIN}
-      GITEA__server__ROOT_URL: https://git.${BASE_DOMAIN}
-      GITEA__server__DISABLE_REGISTRATION: "false"
-      GITEA__service__ENABLE_CAPTCHA: "false"
-      GITEA__security__SECRET_KEY: ${GITEA_SECRET_KEY}
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=postgres:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=${GITEA_DB_USER}
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD}
+    restart: always
+    networks:
+      - dcec-network
     volumes:
-      - gitea_data:/data
+      - ./gitea:/data
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    networks:
-      - nas-services
-    depends_on:
-      postgres:
-        condition: service_healthy
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # VS Code Server (Web IDE)
-  code-server:
-    <<: *restart-policy
-    image: codercom/code-server:latest
-    container_name: nas-code-server
     ports:
-      - "${CODE_PORT}:8080"
-    environment:
-      <<: *common-variables
-      PASSWORD: ${VSCODE_PASSWORD}
-      SUDO_PASSWORD: ${VSCODE_PASSWORD}
-      DEFAULT_WORKSPACE: /home/coder/workspace
-    volumes:
-      - /volume1/dev:/home/coder/workspace
-      - code_server_data:/home/coder/.config
-      - ${DATA_ROOT}/code-server/local:/home/coder/.local
-    user: "1000:1000"
-    networks:
-      - nas-services
-    command: >
-      --bind-addr 0.0.0.0:8080
-      --auth password
-      --disable-telemetry
-      --disable-update-check
-      --install-extension ms-python.python
-      --install-extension ms-vscode.powershell
-      /home/coder/workspace
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - "3000:3000"
+      - "2222:22"
+    depends_on:
+      - postgres
 
-  # Uptime Kuma Monitoring
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      GITEA_DB_USER: ${GITEA_DB_USER}
+      GITEA_DB_PASSWORD: ${GITEA_DB_PASSWORD}
+      N8N_DB_USER: ${N8N_DB_USER}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
+    networks:
+      - dcec-network
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: always
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=${N8N_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+    networks:
+      - dcec-network
+    volumes:
+      - ./n8n:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    depends_on:
+      - postgres
+
   uptime-kuma:
-    <<: *restart-policy
-    image: louislam/uptime-kuma:latest
-    container_name: nas-uptime-kuma
-    ports:
-      - "${UPTIME_PORT}:3001"
-    environment:
-      <<: *common-variables
-      UPTIME_KUMA_PORT: 3001
-      UPTIME_KUMA_HOST: 0.0.0.0
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: always
+    networks:
+      - dcec-network
     volumes:
-      - uptime_data:/app/data
-    networks:
-      - nas-services
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Portainer Container Management
-  portainer:
-    <<: *restart-policy
-    image: portainer/portainer-ce:latest
-    container_name: nas-portainer
+      - ./uptime-kuma:/app/data
     ports:
-      - "${PORTAINER_PORT}:9000"
-    environment:
-      <<: *common-variables
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    networks:
-      - nas-services
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - "3001:3001"
 
-  # MCP Server for n8n integration
-  mcp-server:
-    <<: *restart-policy
-    image: leonardsellem/n8n-mcp-server:latest
-    container_name: nas-mcp-server
-    ports:
-      - "${MCP_PORT}:31002"
-    environment:
-      <<: *common-variables
-      N8N_API_URL: http://n8n:5678/api/v1
-      N8N_API_KEY: "${N8N_API_KEY:-default-api-key}"
-      MCP_PORT: 31002
-      MCP_HOST: "0.0.0.0"
-      NODE_ENV: production
-      DEBUG: "mcp:*"
-    depends_on:
-      n8n:
-        condition: service_healthy
-    networks:
-      - nas-services
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:31002/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Watchtower for Auto Updates (선택사항)
-  watchtower:
-    <<: *restart-policy
-    image: containrrr/watchtower:latest
-    container_name: nas-watchtower
-    environment:
-      <<: *common-variables
-      WATCHTOWER_POLL_INTERVAL: 86400  # 24시간
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_INCLUDE_RESTARTING: "true"
-      WATCHTOWER_SCHEDULE: "0 0 2 * * *"  # 매일 새벽 2시
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - nas-services
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+networks:
+  dcec-network:
+    driver: bridge

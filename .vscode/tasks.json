@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // 작업 목록에 표시될 이름
+      "label": "Run NAS Deployment Script",
+      // 셸 명령을 실행하는 작업 유형
+      "type": "shell",
+      // 실행할 명령
+      "command": "./deploy-nas-final.sh",
+      // 명령이 실행될 작업 디렉터리
+      "options": {
+        "cwd": "${workspaceFolder}/Dev_Env/Docker"
+      },
+      // 이 작업을 기본 빌드 작업으로 설정하여 Ctrl+Shift+B 단축키로 실행 가능
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      // VSCode에서 터미널 패널을 어떻게 보여줄지 설정
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "clear": true
+      },
+      // 문제 감지기는 사용하지 않음
+      "problemMatcher": []
+    }
+  ]
+}
